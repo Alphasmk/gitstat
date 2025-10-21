@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button, Form, Input, Space, Typography, notification } from 'antd';
 import '../styles/LoginComp.css';
 import logo from '../images/github_logo.png';
 import axios from 'axios';
-import { useTransition, animated } from 'react-spring';
+import { useSpring, animated, useTransition } from 'react-spring';
 
 const { Text, Link } = Typography;
 
@@ -13,6 +13,9 @@ const onFinishFailed = (errorInfo) => {
 
 function LoginComp() {
   const [isLogin, setIsLogin] = useState(true);
+  const loginRef = useRef(null);
+  const registerRef = useRef(null);
+  const [height, setHeight] = useState(0);
   const [api, contextHolder] = notification.useNotification();
 
   const openNotification = (msg, descr) => {
@@ -30,7 +33,6 @@ function LoginComp() {
   };
 
   const onFinishLogin = async (values) => {
-    console.log('Form values:', values);
     const formData = new URLSearchParams();
     formData.append('username', values.username);
     formData.append('password', values.password);
@@ -38,58 +40,72 @@ function LoginComp() {
       const response = await axios.post('http://127.0.0.1:8000/token', formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
-      console.log('Server response:', response.data);
       openNotification('Успешный вход', `Вы вошли как ${values.username}`);
-    } catch (error) {
-      console.error('Error logging in:', error);
+    } catch {
       openNotification('Ошибка', `Неверный логин или пароль`);
     }
   };
 
   const onFinishRegister = async (values) => {
-    console.log('Form values:', values);
     const formData = {
-      'username': values.username,
-      'email': values.email,
-      'password': values.password
-    }
+      username: values.username,
+      email: values.email,
+      password: values.password,
+    };
     try {
       const response = await axios.post('http://127.0.0.1:8000/register', formData, {
         headers: { 'Content-Type': 'application/json' },
       });
-      console.log('Server response:', response.data);
       openNotification('Успешная регистрация', `Вы зарегистрировались как ${values.username}`);
-    } catch (error) {
-      console.error('Ошибка регистрации:', error);
+    } catch {
       openNotification('Ошибка', `Неверный логин или пароль`);
     }
-  }
+  };
 
+  // 🔧 Меняем переход — без translate, только прозрачность
   const transitions = useTransition(isLogin, {
-    from: { opacity: 0, transform: 'translate3d(100%,0,0)' },
-    enter: { opacity: 1, transform: 'translate3d(0%,0,0)' },
-    leave: { opacity: 0, transform: 'translate3d(-50%,0,0)' },
-    config: { duration: 200 },
+    from: { opacity: 0, position: 'absolute', width: '100%' },
+    enter: { opacity: 1 },
+    leave: { opacity: 0 },
+    config: { duration: 250 },
+  });
+
+  // корректное измерение высоты формы
+  useEffect(() => {
+    const activeRef = isLogin ? loginRef : registerRef;
+    const timeout = setTimeout(() => {
+      if (activeRef.current) setHeight(activeRef.current.offsetHeight);
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [isLogin]);
+
+  const parentSpring = useSpring({
+    height,
+    config: { tension: 250, friction: 26 },
   });
 
   return (
-    <div
+    <animated.div
       style={{
+        ...parentSpring,
         position: 'relative',
-        width: 320,
-        height: 550,
-        overflow: 'hidden',
+        width: 350,
         borderRadius: 16,
+        backgroundColor: '#12171F',
+        overflow: 'hidden',
+        padding: 0,
       }}
     >
       {contextHolder}
+
       {transitions((style, item) =>
         item ? (
-          <animated.div style={{ ...style, position: 'absolute', width: '100%' }}>
+          // === Форма входа ===
+          <animated.div ref={loginRef} style={{ ...style }}>
             <Form
               name="login"
               layout="vertical"
-              style={{ color: 'white', textAlign: 'center' }}
+              style={{ color: 'white', textAlign: 'center', margin: 20 }}
               onFinish={onFinishLogin}
               onFinishFailed={onFinishFailed}
               autoComplete="off"
@@ -100,6 +116,7 @@ function LoginComp() {
               <Form.Item
                 label="Имя пользователя или email"
                 name="username"
+                rules={[{ required: true, message: 'Введите имя пользователя или email!' }]}
               >
                 <Input />
               </Form.Item>
@@ -107,6 +124,7 @@ function LoginComp() {
               <Form.Item
                 label="Пароль"
                 name="password"
+                rules={[{ required: true, message: 'Введите пароль!' }]}
               >
                 <Input.Password />
               </Form.Item>
@@ -124,11 +142,12 @@ function LoginComp() {
             </Form>
           </animated.div>
         ) : (
-          <animated.div style={{ ...style, position: 'absolute', width: '100%' }}>
+          // === Форма регистрации ===
+          <animated.div ref={registerRef} style={{ ...style }}>
             <Form
               name="register"
               layout="vertical"
-              style={{ color: 'white', textAlign: 'center' }}
+              style={{ color: 'white', textAlign: 'center', margin: 20 }}
               onFinish={onFinishRegister}
               autoComplete="off"
             >
@@ -160,12 +179,12 @@ function LoginComp() {
               </Form.Item>
 
               <Form.Item>
-                <Button type="primary" htmlType="submit" style={{ width: '100%', marginBottom: 0 }}>
+                <Button type="primary" htmlType="submit" style={{ width: '100%' }}>
                   Зарегистрироваться
                 </Button>
               </Form.Item>
 
-              <Space direction="vertical" size={2} style={{ marginBottom: 0 }} >
+              <Space direction="vertical" size={2}>
                 <Text style={{ color: 'white' }}>Уже есть аккаунт?</Text>
                 <Link onClick={() => setIsLogin(true)}>Войти</Link>
               </Space>
@@ -173,7 +192,7 @@ function LoginComp() {
           </animated.div>
         )
       )}
-    </div>
+    </animated.div>
   );
 }
 
