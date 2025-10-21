@@ -1,0 +1,12 @@
+CREATE TABLE USERS
+(
+    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    username VARCHAR2(100) NOT NULL,
+    email VARCHAR2(255) UNIQUE NOT NULL,
+    password_hash VARCHAR2(255) NOT NULL,
+    role VARCHAR2(20) DEFAULT 'user' NOT NULL,
+    is_blocked char(1) DEFAULT 'N' CHECK (is_blocked IN ('Y', 'N')),
+    created_at DATE DEFAULT CURRENT_DATE
+)
+
+DROP TABLE USERS;

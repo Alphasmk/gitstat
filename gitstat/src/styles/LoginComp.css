@@ -1,0 +1,101 @@
+.ant-form-item-label > label {
+  color: white !important;
+}
+
+.ant-input {
+  color: white !important;
+  background-color: #12171F !important;
+  border-color: #2F3743;
+  height: 40px;
+  border-width: 2px;
+}
+
+.ant-input:hover {
+    border-color: #71839D;
+}
+
+.ant-input:focus {
+    border-color: #4A61BD;
+}
+
+.ant-input-affix-wrapper {
+  background-color: #12171F !important;
+  border-color: #2F3743;
+  border-width: 2px;
+  height: 40px !important;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+}
+
+.ant-input-affix-wrapper input.ant-input {
+  height: 100% !important;
+  line-height: 40px !important;
+  padding: 0 !important;
+  color: white !important;
+  background-color: transparent !important;
+}
+
+.ant-input-affix-wrapper-focused,
+.ant-input-affix-wrapper:focus-within {
+  border-color: #4A61BD !important;
+}
+
+.ant-input-affix-wrapper:hover{
+    border-color: #71839D;
+}
+
+.ant-input-affix-wrapper {
+    border-color: #2F3743;
+}
+
+.ant-form-item-control-input-content {
+    border-color: #2F3743 !important;
+    min-height: 40px;
+}
+
+.ant-checkbox-wrapper {
+  color: white !important;
+}
+
+.anticon-eye,
+.anticon-eye-invisible {
+  color: white !important; /* 👈 Меняет цвет на белый */
+  opacity: 0.6; /* чуть мягче, можно убрать */
+}
+
+.anticon-eye:hover,
+.anticon-eye-invisible:hover {
+  color: #ffffff !important;
+  opacity: 1;
+}
+
+.ant-btn{
+    height: 40px;
+    background-color: #408837;
+    border: none !important;
+}
+
+.ant-btn:hover{
+    background-color: #65C358 !important;
+    border: none !important;
+}
+
+.ant-typography{
+    color: white;
+}
+
+.ant-notification-notice {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.ant-notification-notice-content {
+  background-color: #2F3743 !important;
+  color: white !important;
+}
+
+.ant-notification-notice-message,
+.ant-notification-notice-description {
+  color: white !important;
+}
