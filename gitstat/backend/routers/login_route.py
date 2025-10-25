@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, status, Cookie, Response
+# from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from tools.db_helper import get_db
@@ -14,16 +14,13 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-
 class TokenData(BaseModel):
-    username: Optional[str] = None
-
+    id: Optional[int] = None
 
 class User(BaseModel):
     id: int
@@ -37,17 +34,31 @@ class User(BaseModel):
     class Config:
         from_attributes = True
 
-def get_user(username: Optional[str], db: Session) -> Optional[User]:
-    if not username:
+class LoginUser(BaseModel):
+    input: str
+    password: str
+
+def get_user_by_id(id: Optional[int], db: Session) -> Optional[User]:
+    if not id:
         return None
-    user_db = db.query(DBUser).filter(DBUser.username == username).first()
+    user_db = db.query(DBUser).filter(DBUser.id == id).first()
+    if user_db:
+        return User.model_validate(user_db)
+    return None
+
+def get_user_by_input(input: Optional[str], db: Session) -> Optional[User]:
+    if not input:
+        return None
+    user_db = db.query(DBUser).filter(DBUser.username == input).first()
+    if not user_db:
+        user_db = db.query(DBUser).filter(DBUser.email == input).first()
     if user_db:
         return User.model_validate(user_db)
     return None
 
 
-def authenticate_user(username: str, password: str, db: Session) -> Optional[User]:
-    user = get_user(username, db)
+def authenticate_user(input: str, password: str, db: Session) -> Optional[User]:
+    user = get_user_by_input(input, db)
     if not user or not Hasher.verify_password(password, user.password_hash):
         return None
     return user
@@ -60,31 +71,32 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-) -> User:
+        access_token: str | None = Cookie(default=None),
+        db: Session = Depends(get_db)
+    ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
+        detail="Could not validate credentials"
     )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: Optional[str] = payload.get("sub")
-        if not username:
-            raise credentials_exception
-    except jwt.PyJWTError:
-        raise credentials_exception
+    
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Хуй блятььб"
+        )
 
-    user = get_user(username, db)
+    payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
+    id: Optional[int] = int(payload.get("sub"))
+    if not id:
+        raise credentials_exception
+    user = get_user_by_id(id, db)
     if not user:
         raise credentials_exception
     return user
 
-
 async def get_current_active_user(
     current_user: User = Depends(get_current_user)
-) -> User:
+) -> User | None:
     if current_user.is_blocked:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
     return current_user
@@ -93,24 +105,40 @@ async def get_current_active_user(
 async def read_users_me(current_user: User = Depends(get_current_active_user)) -> User:
     return current_user
 
-
-@router.post("/token", response_model=Token)
+@router.post("/login", response_model=Token, status_code=200)
 async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    response: Response,
+    form_data: LoginUser,
     db: Session = Depends(get_db)
 ) -> Token:
-    user = authenticate_user(form_data.username, form_data.password, db)
+    user = authenticate_user(form_data.input, form_data.password, db)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    access_token = create_access_token(data={"sub": str(user.id)}, expires_delta=access_token_expires)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax"
+    )
     return Token(access_token=access_token, token_type="bearer")
 
 
 @router.get("/get/hash")
 async def get_hash() -> str:
     return Hasher.get_password_hash("secret")
+
+@router.get("/test")
+async def test(current_user: User = Depends(get_current_active_user)):
+    return {"message": f"Привет, {current_user.username}! id: {current_user.id}"}
+
+@router.post("/logout")
+async def logout(
+    response: Response
+):
+    response.delete_cookie(key="access_token")
