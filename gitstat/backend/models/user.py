@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Date, CHAR, CheckConstraint, func
-from tools.db_helper import Base
+from tools.db_helper import DBHelper
 
-class User(Base):
+class User(DBHelper.Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(100), nullable=False)

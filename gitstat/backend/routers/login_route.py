@@ -5,9 +5,17 @@ from fastapi import APIRouter, Depends, HTTPException, status, Cookie, Response
 # from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from tools.db_helper import get_db
+from tools.db_helper import DBHelper
 from tools.password_hasher import Hasher
 from models.user import User as DBUser
+from fastapi.concurrency import run_in_threadpool
+import oracledb
+
+import logging
+import time
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 SECRET_KEY = "83b311ce53301c5c526212ae6420383d1375cc48941df43fc7200de7c729d15c"
 ALGORITHM = "HS256"
@@ -38,27 +46,29 @@ class LoginUser(BaseModel):
     input: str
     password: str
 
-def get_user_by_id(id: Optional[int], db: Session) -> Optional[User]:
+def get_user_by_id(id: Optional[int]) -> Optional[User]:
+    logger.info(f"Вызов get_user_by_id для ID: {id}")
     if not id:
         return None
-    user_db = db.query(DBUser).filter(DBUser.id == id).first()
+    user_db = DBHelper.execute_get_user("get_user_by_id", id)
+    logger.info(f"Получен результат из DBHelper.execute_get_user для ID: {id}")
     if user_db:
         return User.model_validate(user_db)
     return None
 
-def get_user_by_input(input: Optional[str], db: Session) -> Optional[User]:
+def get_user_by_input(input: Optional[str]) -> Optional[User]:
+    logger.info(f"Вызов get_user_by_input для: {input}")
     if not input:
         return None
-    user_db = db.query(DBUser).filter(DBUser.username == input).first()
-    if not user_db:
-        user_db = db.query(DBUser).filter(DBUser.email == input).first()
+    user_db = DBHelper.execute_get_user("get_user_by_email_or_login", input)
+    logger.info(f"Получен результат из DBHelper.execute_get_user для: {input}")
     if user_db:
         return User.model_validate(user_db)
     return None
 
 
-def authenticate_user(input: str, password: str, db: Session) -> Optional[User]:
-    user = get_user_by_input(input, db)
+def authenticate_user(input: str, password: str) -> Optional[User]:
+    user = get_user_by_input(input)
     if not user or not Hasher.verify_password(password, user.password_hash):
         return None
     return user
@@ -72,7 +82,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 async def get_current_user(
         access_token: str | None = Cookie(default=None),
-        db: Session = Depends(get_db)
     ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -89,7 +98,7 @@ async def get_current_user(
     id: Optional[int] = int(payload.get("sub"))
     if not id:
         raise credentials_exception
-    user = get_user_by_id(id, db)
+    user = get_user_by_id(id)
     if not user:
         raise credentials_exception
     return user
@@ -102,16 +111,15 @@ async def get_current_active_user(
     return current_user
 
 @router.get("/users/me/", response_model=User)
-async def read_users_me(current_user: User = Depends(get_current_active_user)) -> User:
+async def read_users_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 @router.post("/login", response_model=Token, status_code=200)
 async def login_for_access_token(
     response: Response,
     form_data: LoginUser,
-    db: Session = Depends(get_db)
 ) -> Token:
-    user = authenticate_user(form_data.input, form_data.password, db)
+    user = authenticate_user(form_data.input.lower(), form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

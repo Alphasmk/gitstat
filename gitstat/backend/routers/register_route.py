@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
-from tools.db_helper import get_db, get_cursor
+from tools.db_helper import DBHelper
 from tools.password_hasher import Hasher
 from models.user import User as DBUser
 
@@ -16,12 +16,10 @@ class RegisterUser(BaseModel):
     password: str
 
 @router.post("/register", response_class=JSONResponse)
-async def register_user(form_data: RegisterUser, db: Session = Depends(get_db)):
-    existing_user = (
-        db.query(DBUser)
-        .filter(or_(DBUser.username == form_data.username, DBUser.email == form_data.email))
-        .first()
-    )
+async def register_user(form_data: RegisterUser, db: Session = Depends(DBHelper.get_db)):
+    existing_user = DBHelper.execute_get_user("get_user_by_email_or_login", form_data.username)
+    if not existing_user:
+        DBHelper.execute_get_user("get_user_by_email_or_login", form_data.email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -33,10 +31,10 @@ async def register_user(form_data: RegisterUser, db: Session = Depends(get_db)):
 
     hashed_password = Hasher.get_password_hash(form_data.password)
     try:
-        with get_cursor() as cursor:
+        with DBHelper.get_cursor() as cursor:
             cursor.callproc(
                 "add_user",
-                [form_data.username, form_data.email, hashed_password, role, "N"],
+                [form_data.username.lower(), form_data.email.lower(), hashed_password, role, "N"],
             )
     except Exception as e:
         raise HTTPException(
