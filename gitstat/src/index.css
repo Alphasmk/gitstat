@@ -66,3 +66,24 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.main-menu .ant-menu-item {
+  height: 45px !important;
+  line-height: 45px !important;
+  width: 100px;
+  color: white !important;
+  font-weight: 600;
+  font-size: 16px;
+  transition: 0.3s ease;
+  margin: 0 5px !important;
+  border-radius: 5px !important;
+  height: 30px;
+}
+
+.main-menu .ant-menu-item:hover {
+  background-color: #1C232F !important;
+}
+
+.main-menu .ant-menu-item-selected {
+  background-color: #1C232F !important;
+}

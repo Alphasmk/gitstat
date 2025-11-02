@@ -1,0 +1,102 @@
+import { Layout, Menu, Col, Row, Space, Typography, Button } from 'antd';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import logoutImage from '../images/logout.png'
+const { Header } = Layout;
+
+const items = Array.from({ length: 2 }).map((_, index) => ({
+    key: index + 1,
+    label: `nav ${index + 1}`,
+}));
+
+function HeaderComp() {
+    const [username, setUsername] = useState('');
+    const navigate = useNavigate();
+    function logout() {
+        fetch('http://localhost:8000/logout', {
+            method: 'POST',
+            credentials: 'include'
+        }).then(() => {
+            navigate('/login');
+        })
+    }
+    useEffect(() => {
+        fetch('http://localhost:8000/users/me', {
+            method: 'GET',
+            credentials: 'include'
+        }).then(resp => resp.json()).then(data => setUsername(data.username))
+    }, []);
+    items[0].label = 'Главная'
+    items[1].label = 'История'
+    return (
+        <Header style={{ backgroundColor: '#12171F', padding: '0 40px' }}>
+            <Row align="middle" justify="space-between">
+                <Col flex="120px">
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}>
+                        <img src='../../github_logo.png' style={{ height: 45 }} />
+                    </div>
+                </Col>
+
+                <Col flex="auto">
+                    <div
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        <Menu
+                            theme="dark"
+                            className="main-menu"
+                            mode="horizontal"
+                            defaultSelectedKeys={['1']}
+                            items={items}
+                            overflowedIndicator={null}
+                            style={{
+                                backgroundColor: '#12171F',
+                                borderBottom: 'none',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                flex: 1,
+                            }}
+                        />
+                    </div>
+                </Col>
+
+                <Col style={{ textAlign: 'right', color: 'white' }}>
+                    <Space direction='horizontal'>
+                        <Typography.Text style={{ fontWeight: 600, fontSize: 16 }}>
+                            {username}
+                        </Typography.Text>
+                        <Button className='logout-button' style={{ width: 14, height: 14 }} onClick={logout}>
+                            <img src={logoutImage} style={{ height: 16 }} />
+                        </Button>
+                    </Space>
+                </Col>
+            </Row>
+            <style jsx>
+                {`
+                            .logout-button {
+                                background-color: #883737 !important;
+                                padding: 18px;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                transition: 0.3s;
+                                border: 2px solid #C76C6C !important;
+                            }
+
+                            .logout-button:hover {
+                                background-color: #C76C6C !important;
+                                border: 2px solid #C76C6C !important;
+                            }
+                        `}
+            </style>
+        </Header>
+    );
+}
+
+export default HeaderComp;

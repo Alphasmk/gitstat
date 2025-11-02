@@ -27,6 +27,7 @@ END;
 
 DROP PROCEDURE get_user_by_email_or_login;
 
+--Получить пользователя по id
 CREATE PROCEDURE get_user_by_id
 (
     user_id IN VARCHAR2,

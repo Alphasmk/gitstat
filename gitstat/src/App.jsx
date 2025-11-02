@@ -61,5 +61,3 @@ function App() {
 }
 
 export default App
-
-//<Route path="/" element={<Navigate to="/login" replace />} />
