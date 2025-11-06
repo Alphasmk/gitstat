@@ -4,14 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import logoutImage from '../images/logout.png'
 const { Header } = Layout;
 
-const items = Array.from({ length: 2 }).map((_, index) => ({
-    key: index + 1,
-    label: `nav ${index + 1}`,
-}));
+const items = [
+        { key: '/', label: 'Главная' },
+        { key: '/history', label: 'История' },
+    ];
 
 function HeaderComp() {
     const [username, setUsername] = useState('');
     const navigate = useNavigate();
+    const handleMenuClick = (e) => {
+        navigate(e.key);
+    };
     function logout() {
         fetch('http://localhost:8000/logout', {
             method: 'POST',
@@ -26,8 +29,6 @@ function HeaderComp() {
             credentials: 'include'
         }).then(resp => resp.json()).then(data => setUsername(data.username))
     }, []);
-    items[0].label = 'Главная'
-    items[1].label = 'История'
     return (
         <Header style={{ backgroundColor: '#12171F', padding: '0 40px' }}>
             <Row align="middle" justify="space-between">
@@ -53,8 +54,10 @@ function HeaderComp() {
                             className="main-menu"
                             mode="horizontal"
                             defaultSelectedKeys={['1']}
+                            selectedKeys={[location.pathname]}
                             items={items}
                             overflowedIndicator={null}
+                            onClick={handleMenuClick}
                             style={{
                                 backgroundColor: '#12171F',
                                 borderBottom: 'none',

@@ -1,23 +1,60 @@
-import { Layout, Input, Form, Space, Typography, Button } from 'antd';
+import { Layout, Input, Form, Space, Typography, Button, notification } from 'antd';
 import { useState } from 'react';
 import githubLogo from '../images/github_logo.png';
 import sendImages from '../images/send.png'
+import { useNavigate } from 'react-router-dom';
 
 const { Content } = Layout;
 
-function QueryContentComp() {
+function GitRequestContentComp() {
     const [isInputFocused, setInputFocus] = useState(false);
+    const [api, contextHolder] = notification.useNotification();
+    const navigate = useNavigate();
+
+    const openNotification = (msg, descr) => {
+        api.info({
+            message: msg,
+            description: descr,
+            placement: 'top',
+            style: {
+                backgroundColor: '#2F3743',
+                color: 'white',
+                borderRadius: '10px',
+                overflow: 'hidden',
+            },
+        });
+    };
+
+    const onRequestFinish = async (values) => {
+        if (values.input.trim() != "") {
+            navigate(`/git_result?stroke=${values.input}`)
+            // await fetch(`http://localhost:8000/git_info?stroke=${encodeURIComponent(values.input)}`, {
+            //     method: 'GET',
+            //     credentials: 'include'
+            // })
+            //     .then(resp => resp.json())
+            //     .then(data => openNotification('Успех!', JSON.stringify(data, null, 2)))
+            //     .catch(e => openNotification('Ошибка!', String(e)))
+        }
+    }
+
+
     return (
         <Content style={{ padding: '0 0px', flex: 1 }}>
+            {contextHolder}
             <div
                 className='bg-container'
             >
-                <Form>
+                <Form
+                    name='GitRequest'
+                    layout='vertical'
+                    onFinish={onRequestFinish}
+                >
                     <Space direction='vertical' size={20}>
                         <Typography.Title style={{
                             margin: 0,
                             color: '#fff',
-                            transform: isInputFocused ? 'scale(1.05)' : 'scale(0.9)',
+                            transform: isInputFocused ? 'scale(1)' : 'scale(0.9)',
                             transition: 'transform 0.3s ease'
                         }} level={3}>
                             Получите статистику по любому<br />
@@ -25,8 +62,11 @@ function QueryContentComp() {
                         </Typography.Title>
 
                         <Space direction='horizontal' size={5}>
-                            <Form.Item>
+                            <Form.Item
+                                name="input"
+                            >
                                 <Input className='query-input'
+                                    placeholder="Введите ссылку на репозиторий, профиль или имя пользователя"
                                     onFocus={() => setInputFocus(true)}
                                     onBlur={() => setInputFocus(false)} />
                             </Form.Item>
@@ -68,11 +108,17 @@ function QueryContentComp() {
                 }
 
                 .query-input{
-                    width: ${isInputFocused ? '35vw' : '30vw'}
+                    width: ${isInputFocused ? '35vw' : '30vw'};
+                    font-weight: 600;
+                }
+
+                .query-input::placeholder {
+                    color: #313B4B;
+                    font-weight: 600;
                 }
             `}</style>
         </Content>
     )
 }
 
-export default QueryContentComp;
+export default GitRequestContentComp;

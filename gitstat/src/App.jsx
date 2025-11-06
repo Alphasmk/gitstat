@@ -4,6 +4,9 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import LoginComp from './components/loginComp'
 import MainPage from './components/MainPage';
+import MainLayout from './layouts/MainLayout';
+import HistoryComp from './components/HistoryComp';
+import GitRequestResultComp from './components/GitRequestResultComp'
 import axios from 'axios';
 import './App.css'
 
@@ -53,7 +56,11 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<ProtectedMainPage/>} />
+        <Route element={<MainLayout/>}>
+          <Route path="/" element={<ProtectedMainPage/>}/>
+          <Route path="/history" element={<HistoryComp/>}/>
+          <Route path="/git_result" element={<GitRequestResultComp/>}/>
+        </Route>
         <Route path="/login" element={<ProtectedLoginPage />} />
       </Routes>
     </Router>
