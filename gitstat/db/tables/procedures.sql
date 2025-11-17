@@ -69,6 +69,7 @@ BEGIN
     INSERT
     INTO PROFILES
     (
+        git_id,
         login,
         avatar_url,
         html_url,
@@ -87,6 +88,7 @@ BEGIN
         updated_at
     )
     VALUES (
+        git_id,
         login,
         avatar_url,
         html_url,
@@ -104,6 +106,75 @@ BEGIN
         created_at,
         updated_at
     );
+    COMMIT;
 END;
 
 DROP PROCEDURE add_profile_to_history;
+
+--Проверить, был ли запрос по такому пользователю
+CREATE PROCEDURE is_was_profile_request
+(
+    p_git_id IN NUMBER,
+    count_of_rows OUT NUMBER
+)
+AS
+BEGIN
+    SELECT COUNT(*) INTO count_of_rows FROM PROFILES WHERE PROFILES.git_id = p_git_id;
+END;
+
+DROP PROCEDURE is_was_profile_request;
+
+--Проверить, был ли запрос по такому репозиторию
+CREATE PROCEDURE is_was_repository_request
+(
+    p_git_id IN NUMBER,
+    count_of_rows OUT NUMBER
+)
+AS
+BEGIN
+    SELECT COUNT(*) INTO count_of_rows FROM REPOSITORIES WHERE REPOSITORIES.git_id = p_git_id;
+END;
+
+DROP PROCEDURE is_was_repository_request;
+
+--Обновить данные профиля в истории
+CREATE PROCEDURE update_profile_history
+(
+    p_git_id NUMBER,
+    p_login VARCHAR2,
+    p_avatar_url VARCHAR2,
+    p_html_url VARCHAR2,
+    p_type VARCHAR2,
+    p_name VARCHAR2,
+    p_company VARCHAR2,
+    p_location VARCHAR,
+    p_email VARCHAR2,
+    p_blog VARCHAR2,
+    p_bio VARCHAR2,
+    p_twitter_username VARCHAR2,
+    p_followers_count NUMBER,
+    p_following_count NUMBER,
+    p_public_repos NUMBER,
+    p_updated_at TIMESTAMP
+)
+AS
+BEGIN
+    UPDATE PROFILES SET PROFILES.login = p_login,
+    PROFILES.avatar_url = p_avatar_url,
+    PROFILES.html_url = p_html_url,
+    PROFILES.type = p_type,
+    PROFILES.name = p_name,
+    PROFILES.company = p_company,
+    PROFILES.location = p_location,
+    PROFILES.email = p_email,
+    PROFILES.blog = p_blog,
+    PROFILES.bio = p_bio,
+    PROFILES.twitter_username = p_twitter_username,
+    PROFILES.followers_count = p_followers_count,
+    PROFILES.following_count = p_following_count,
+    PROFILES.public_repos = p_public_repos,
+    PROFILES.updated_at = p_updated_at
+    WHERE PROFILES.git_id = p_git_id;
+END;
+
+DROP PROCEDURE update_profile_history;

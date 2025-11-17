@@ -6,6 +6,8 @@ from aiohttp import ClientSession
 import requests
 import re
 from сonfig import GITHUB_ACCESS_TOKEN as token
+from tools.db_helper import DBHelper
+from datetime import datetime
 
 router = APIRouter()
 
@@ -23,6 +25,9 @@ async def async_http_get(path: str):
     async with ClientSession() as session:
         response = await session.get(url=path, headers={"Authorization": f"Bearer {token}"})
         return await response.json()
+
+def convert_date(date: str) -> datetime:
+    return datetime.fromisoformat(date.replace('Z', '+00:00'))
 
 def parse_user_input(stroke: str) -> UserInput:
     stroke = stroke.strip()
@@ -50,13 +55,69 @@ def parse_user_input(stroke: str) -> UserInput:
 async def get_type_of_request(stroke: str):
     try:
         result = RequestType.model_validate(parse_user_input(stroke))
+        count = 0
         if result.type == "profile":
             response = await async_http_get(f"https://api.github.com/users/{result.username}")
-            return response
+            count = DBHelper.is_was_request("is_was_profile_request", response['id'])
+            print(response['id'])
         elif result.type == "repository":
             response = await async_http_get(f"https://api.github.com/repos/{result.username}/{result.repository}")
-            return response
+            count = DBHelper.is_was_request("is_was_repository_request", response['id'])
+            print(response['id'])
         else:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+        print(count)
+        if count == 0:
+            created_at = None
+            updated_at = None
+            
+            if response.get('created_at'):
+                created_at = convert_date(response['created_at'])
+            if response.get('updated_at'):
+                updated_at = convert_date(response['updated_at'])
+
+            if result.type == "profile":
+                with DBHelper.get_cursor() as cursor:
+                    cursor.callproc("add_profile_to_history", [
+                    response.get('id'),
+                    response.get('login'),
+                    response.get('avatar_url'),
+                    response.get('html_url'),
+                    response.get('type'),
+                    response.get('name'),
+                    response.get('company'),
+                    response.get('location'),
+                    response.get('email'),
+                    response.get('blog'),
+                    response.get('bio'),
+                    response.get('twitter_username'),
+                    response.get('followers'),
+                    response.get('following'),
+                    response.get('public_repos'),
+                    created_at,
+                    updated_at])
+        else:
+            updated_at = None
+            if response.get('updated_at'):
+                updated_at = convert_date(response['updated_at'])
+            with DBHelper.get_cursor() as cursor:
+                cursor.callproc("update_profile_history", [
+                    response.get('id'),
+                    response.get('login'),
+                    response.get('avatar_url'),
+                    response.get('html_url'),
+                    response.get('type'),
+                    response.get('name'),
+                    response.get('company'),
+                    response.get('location'),
+                    response.get('email'),
+                    response.get('blog'),
+                    response.get('bio'),
+                    response.get('twitter_username'),
+                    response.get('followers'),
+                    response.get('following'),
+                    response.get('public_repos'),
+                    updated_at])
+        return response
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

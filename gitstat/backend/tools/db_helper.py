@@ -51,3 +51,14 @@ class DBHelper:
                 return row_dict
         except Exception as e:
             raise
+    
+    @staticmethod
+    def is_was_request(proc_name: str, value: int):
+        try:
+            with DBHelper.get_cursor() as cursor:
+                out_param = cursor.var(oracledb.NUMBER)
+                cursor.callproc(proc_name, [value, out_param])
+                result = out_param.getvalue()
+                return result
+        except Exception as e:
+            raise
