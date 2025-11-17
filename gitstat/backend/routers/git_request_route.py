@@ -5,6 +5,7 @@ from asyncio import create_task, run
 from aiohttp import ClientSession
 import requests
 import re
+from сonfig import GITHUB_ACCESS_TOKEN as token
 
 router = APIRouter()
 
@@ -20,7 +21,7 @@ class RequestType(UserInput):
 
 async def async_http_get(path: str):
     async with ClientSession() as session:
-        response = await session.get(url=path)
+        response = await session.get(url=path, headers={"Authorization": f"Bearer {token}"})
         return await response.json()
 
 def parse_user_input(stroke: str) -> UserInput:

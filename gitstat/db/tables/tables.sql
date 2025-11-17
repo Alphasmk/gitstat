@@ -19,6 +19,7 @@ CREATE TABLE PROFILES
     type VARCHAR2(10) DEFAULT 'User',
     name VARCHAR2(200),
     company VARCHAR2(200),
+    location VARCHAR(200),
     email VARCHAR2(200),
     blog VARCHAR2(500),
     bio VARCHAR2(4000),

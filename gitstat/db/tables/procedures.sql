@@ -42,3 +42,68 @@ BEGIN
 END;
 
 DROP PROCEDURE get_user_by_id;
+
+--Добавить профиль пользователя для истории
+CREATE PROCEDURE add_profile_to_history
+(
+    git_id NUMBER,
+    login VARCHAR2,
+    avatar_url VARCHAR2,
+    html_url VARCHAR2,
+    type VARCHAR2,
+    name VARCHAR2,
+    company VARCHAR2,
+    location VARCHAR,
+    email VARCHAR2,
+    blog VARCHAR2,
+    bio VARCHAR2,
+    twitter_username VARCHAR2,
+    followers_count NUMBER,
+    following_count NUMBER,
+    public_repos NUMBER,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+)
+AS
+BEGIN
+    INSERT
+    INTO PROFILES
+    (
+        login,
+        avatar_url,
+        html_url,
+        type,
+        name,
+        company,
+        location,
+        email,
+        blog,
+        bio,
+        twitter_username,
+        followers_count,
+        following_count,
+        public_repos,
+        created_at,
+        updated_at
+    )
+    VALUES (
+        login,
+        avatar_url,
+        html_url,
+        type,
+        name,
+        company,
+        location,
+        email,
+        blog,
+        bio,
+        twitter_username,
+        followers_count,
+        following_count,
+        public_repos,
+        created_at,
+        updated_at
+    );
+END;
+
+DROP PROCEDURE add_profile_to_history;
