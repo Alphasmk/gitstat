@@ -8,7 +8,7 @@ function ReloadButton({callback, ...props}){
             <style>
                 {`
                 .rotate-on-hover {
-                    transition: transform 0.6s ease-in-out;
+                    transition: transform 0.8s ease-in-out;
                 }
 
                 .blue-button:hover .rotate-on-hover {

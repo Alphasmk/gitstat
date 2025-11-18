@@ -1,11 +1,21 @@
 import { useState, useEffect } from "react";
 import { LoadingOutlined } from '@ant-design/icons';
-import { Spin, Layout, Flex, Result, Button, Space, Col, Row, Typography } from "antd";
+import { Spin, Layout, Flex, Result, Button, Space, Col, Row, Typography, Tooltip, Divider } from "antd";
 import { useLocation, useNavigate } from 'react-router-dom';
 import ReloadButton from "./ReloadButton";
 import LinkButton from "./LinkButton";
 
 const { Content } = Layout;
+
+function formatDateTime(dateString) {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
+}
 
 function formatDate(dateString) {
     const date = new Date(dateString);
@@ -15,6 +25,7 @@ function formatDate(dateString) {
     return `${day}.${month}.${year}`;
 }
 
+
 function GitRequestResultComp() {
     console.log('typeof Result:', typeof Result);
     const [loading, setLoading] = useState(true);
@@ -22,35 +33,41 @@ function GitRequestResultComp() {
     const [errorData, setErrorData] = useState("");
     const [data, setData] = useState(null);
     const [status, setStatus] = useState(200);
+    const [lastUpdate, setLastUpdate] = useState(null);
     const { search } = useLocation();
     const navigate = useNavigate();
 
-    function getData() {
+    async function getData() {
         setLoading(true);
         setData(null);
         setIsOk(true);
 
         const params = new URLSearchParams(search);
         const stroke = params.get('stroke');
-        fetch(`http://localhost:8000/git_info?stroke=${encodeURIComponent(stroke)}`, {
+        const response = await fetch(`http://localhost:8000/new_git_info?stroke=${encodeURIComponent(stroke)}`, {
+            method: 'GET',
+            credentials: 'include',
+            redirect: 'manual'
+        })
+
+        fetch(response.url, {
             method: 'GET',
             credentials: 'include'
-        })
-            .then(resp => {
-                console.log(typeof (resp.ok));
-                if (!resp.ok) {
-                    return resp.json().then(errorData => {
-                        const errorDetail = errorData.detail || errorData.message || 'Неизвестная ошибка';
-                        console.error('Error detail:', errorDetail);
-                        setStatus(resp.status);
-                        setErrorData(errorDetail);
-                        setIsOk(false);
-                        throw new Error(errorDetail);
-                    });
-                }
-                return resp.json();
+        }).then(resp => {
+            console.log(typeof (resp.ok));
+            if (!resp.ok) {
+                return resp.json().then(errorData => {
+                    const errorDetail = errorData.detail || errorData.message || 'Неизвестная ошибка';
+                    console.error('Error detail:', errorDetail);
+                    setStatus(resp.status);
+                    setErrorData(errorDetail);
+                    setIsOk(false);
+                    throw new Error(errorDetail);
+                });
             }
-            )
+            return resp.json();
+        }
+        )
             .then(data => {
                 if (data.status) {
                     setStatus(data.status);
@@ -58,6 +75,7 @@ function GitRequestResultComp() {
                     throw new Error("Не найдено");
                 }
                 setData(data);
+                setLastUpdate(data.request_time);
                 setLoading(false);
             })
             .catch(err => {
@@ -91,7 +109,7 @@ function GitRequestResultComp() {
                 ) : (
                     <Space direction="vertical" style={{ width: '90%', display: loading ? "none" : "block" }}>
                         <Row style={{ backgroundColor: "#12171F", borderRadius: 25 }} align={"middle"} justify={"center"}>
-                            <Col flex={1} style={{ backgroundColor: '#1C232F', borderRadius: "25px 0 0 25px", display: "flex", justifyContent: "flex-start", alignItems: "center", padding: 20 }}>
+                            <Col flex={1} style={{ backgroundColor: '#1C232F', borderRadius: "25px 0 0 25px", display: "flex", justifyContent: "flex-start", alignItems: "center", padding: 20, width: 285 }}>
                                 <Space direction="horizontal">
                                     {data?.avatar_url ? (
                                         <img src={data.avatar_url} alt="avatar" style={{ height: 80, borderRadius: '30%', display: "block" }} />
@@ -118,24 +136,65 @@ function GitRequestResultComp() {
                             <Col flex={4}></Col>
                             <Col flex={1} style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
                                 <div style={{ backgroundColor: "#1C232F", display: "flex", width: "fit-content", padding: 15, marginRight: 15, borderRadius: 25 }}>
-                                    <LinkButton style={{ height: 60, width: 60, borderRadius: 20, marginRight: 10}} onClick={() => {
-                                        window.open(data.html_url, '_blank');
+                                    <LinkButton style={{ height: 60, width: 60, borderRadius: 20, marginRight: 10 }} onClick={() => {
+                                        window.open(data?.html_url, '_blank');
                                     }}></LinkButton>
-                                    <ReloadButton style={{ height: 60, width: 60, borderRadius: 20 }} onClick={getData}></ReloadButton>
+                                    <Tooltip placement="top" trigger={['hover']} title={<span>{"Последнее обновление: "}<br />{formatDateTime(lastUpdate)}</span>}>
+                                        <span><ReloadButton style={{ height: 60, width: 60, borderRadius: 20 }} onClick={getData}></ReloadButton></span>
+                                    </Tooltip>
+
                                 </div>
                             </Col>
                         </Row>
+                        <div style={{ height: '70vh', marginTop: 20 }}>
+                            <Row>
+                                <Col flex={1} style={{ backgroundColor: '#1C232F', borderRadius: "25px 0 0 0px", display: "flex", justifyContent: "flex-start", alignItems: "center", padding: 20, width: 250 }}>
+                                </Col>
+                                <Col flex={4} style={{ backgroundColor: '#12171F' }}></Col>
+                                <Col flex={1} style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", backgroundColor: '#12171F', borderRadius: "0 25px 0 0" }}>
+                                </Col>
+                            </Row>
+                            <Row>
+                                <Col flex={1} style={{ backgroundColor: '#1C232F', display: "flex", justifyContent: "flex-start", paddingLeft: 20, width: 250, height: '60vh' }}>
+                                    <div style={{display: "flex", width: "100%", flexDirection: "column", alignItems: "stretch"}}>
+                                        <div style={{color: "white", fontWeight: 700, fontSize: 36, textAlign: "left"}}>
+                                            {data?.name ? data?.name : data?.login}
+                                        </div>
+                                        <div>
+                                            <div style={{color: "white", fontSize: 18, textAlign: "left", fontWeight: 600}}>
+                                                ID: {data?.git_id}{<Divider type="vertical" style={{borderColor: "white"}}></Divider>}{data?.type == "User" ? "Пользователь" : "Организация"}
+                                            </div>
+                                        </div>
+                                        <div style={{height: "2px", backgroundColor: "#8EAEE3", marginRight: 20, marginTop: 25}}>
+                                            
+                                        </div>
+                                        
+                                    </div>
+                                </Col>
+                                <Col flex={4} style={{ backgroundColor: '#12171F' }}>
+                                    
+                                </Col>
+                                <Col flex={1} style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", backgroundColor: '#12171F' }}>
+                                </Col>
+                            </Row>
+                            <Row>
+                                <Col flex={1} style={{ backgroundColor: '#1C232F', borderRadius: "0 0 0 25px", display: "flex", justifyContent: "flex-start", alignItems: "center", padding: 20, width: 250 }}>
+                                </Col>
+                                <Col flex={4} style={{ backgroundColor: '#12171F' }}></Col>
+                                <Col flex={1} style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", backgroundColor: '#12171F', borderRadius: "0 0 25px 0" }}>
+                                </Col>
+                            </Row>
+                        </div>
                         <pre style={{ color: "white" }}>{data && JSON.stringify(data, null, 2)}</pre>
                     </Space>
                 )}
 
                 {loading ? (
                     <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        height: '100%',
-                        width: '100%',
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
                     }}>
                         <Spin indicator={<LoadingOutlined style={{ fontSize: 60, color: 'white' }} />} />
                     </div>
@@ -151,7 +210,7 @@ function GitRequestResultComp() {
                         padding: 24px;
                         display: flex;
                         justify-content: center;
-                        align-items: center;
+                        align-items: flex-start;
                     }
 
                     .error-button {

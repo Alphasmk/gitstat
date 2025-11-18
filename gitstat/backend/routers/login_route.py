@@ -83,7 +83,7 @@ async def get_current_user(access_token: Optional[str] = Cookie(default=None)) -
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Необходима авторизация"
         )
-
+    
     try:
         payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = int(payload.get("sub"))

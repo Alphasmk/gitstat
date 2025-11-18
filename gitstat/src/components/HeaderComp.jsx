@@ -32,10 +32,11 @@ function HeaderComp() {
     return (
         <Header style={{ backgroundColor: '#12171F', padding: '0 40px' }}>
             <Row align="middle" justify="space-between">
+                <Col flex="80px"></Col>
                 <Col flex="120px">
                     <div style={{
                         display: 'flex',
-                        justifyContent: 'center',
+                        justifyContent: 'left',
                         alignItems: 'center'
                     }}>
                         <img src='../../github_logo.png' style={{ height: 45 }} />
@@ -79,6 +80,7 @@ function HeaderComp() {
                         </Button>
                     </Space>
                 </Col>
+                <Col flex="80px"></Col>
             </Row>
             <style jsx>
                 {`

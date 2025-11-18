@@ -66,3 +66,19 @@
   margin: 0 auto;
   padding: 20px;
 }
+
+.ant-tooltip-inner {
+  background: #2D384B !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  max-width: 180px;
+  padding: 10px 14px !important;
+  text-align: center !important;
+  line-height: 15px;
+  font-weight: 600;
+}
+
+.ant-tooltip-arrow::before {
+  background: #2D384B !important;
+}
