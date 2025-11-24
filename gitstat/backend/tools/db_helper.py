@@ -4,9 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Dict
-from asyncio import create_task, run
-from aiohttp import ClientSession
-from сonfig import GITHUB_ACCESS_TOKEN as token
+from tools.http_helper import HTTPHelper
 import oracledb
 import json
 import logging
@@ -25,18 +23,12 @@ class DBHelper:
             yield db
         finally:
             db.close()
-            
-    @staticmethod
-    async def async_http_get(path: str):
-        async with ClientSession() as session:
-            response = await session.get(url=path, headers={"Authorization": f"Bearer {token}"})
-            return await response.json()
 
     @staticmethod
     @contextmanager
     def get_cursor():
         conn = oracledb.connect(user="system", password="1111", dsn="localhost:1522/freepdb1")
-        conn.call_timeout = 5000
+        conn.call_timeout = 10000
         try:
             cursor = conn.cursor()
             yield cursor
@@ -49,7 +41,7 @@ class DBHelper:
             conn.close()
     
     @staticmethod
-    def execute_get_user(proc_name: str, value: str | int):
+    def execute_get(proc_name: str, value: str | int):
         try:
             with DBHelper.get_cursor() as cursor:
                 ref_cursor = cursor.var(oracledb.CURSOR)
@@ -64,6 +56,17 @@ class DBHelper:
         except Exception as e:
             raise
     
+    @staticmethod
+    def execute_get_all(proc_name: str, value: str | int):
+        with DBHelper.get_cursor() as cursor:
+            print(type(value))
+            ref_cursor = cursor.var(oracledb.CURSOR)
+            cursor.callproc(proc_name, [value, ref_cursor])
+            result_cursor = ref_cursor.getvalue()
+            rows = result_cursor.fetchall()
+            columns = [col[0].lower() for col in result_cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+
     @staticmethod
     def is_was_request(proc_name: str, value: int):
         try:
@@ -133,7 +136,8 @@ class DBHelper:
             
     @staticmethod
     async def add_repository_to_history(data):
-        languages = await DBHelper.async_http_get(f"https://api.github.com/repos/{data.get('owner').get('login')}/{data.get('name')}/languages")
+        languages = await HTTPHelper.async_http_get(f"https://api.github.com/repos/{data.get('owner').get('login')}/{data.get('name')}/languages")
+        commits = await HTTPHelper.async_http_get(f"https://api.github.com/repos/{data.get('owner').get('login')}/{data.get('name')}/commits?per_page=100")
         created_at = None
         updated_at = None
         pushed_at = None
@@ -163,7 +167,6 @@ class DBHelper:
                 pushed_at
             ])
 
-        with DBHelper.get_cursor() as cursor:
             for lang in languages:
                 cursor.callproc("add_repository_language", [
                     data.get('id'),
@@ -171,17 +174,115 @@ class DBHelper:
                     languages.get(lang)
                 ])
         
-        with DBHelper.get_cursor() as cursor:
-            for topic in data.get('topics'):
-                cursor.callproc("add_repository_topic", [
-                    data.get('id'),
-                    topic
-                ])
+            if data.get('topics'):
+                for topic in data.get('topics'):
+                    cursor.callproc("add_repository_topic", [
+                        data.get('id'),
+                        topic
+                    ])
         
-        with DBHelper.get_cursor() as cursor:
-            print(data.get('license'))
-            cursor.callproc("add_repository_license", [
+            if data.get('license'):
+                cursor.callproc("add_or_update_repository_license", [
+                    data.get('id'),
+                    data.get('license').get('name'),
+                    data.get('license').get('spdx_id')
+                ])
+
+            for commit in commits:
+                commit_date = DBHelper.convert_date(commit.get('commit').get('author').get('date'))
+                cursor.callproc("add_commit", [
                 data.get('id'),
-                data.get('license').get('name'),
-                data.get('license').get('spdx_id')
+                commit.get('sha'),
+                commit.get('author').get('login'),
+                commit.get('author').get('avatar_url'),
+                commit.get('commit').get('message'),
+                commit_date,
+                commit.get('commit').get('url')
             ])
+                
+    @staticmethod
+    async def update_repository_history(data):
+        languages = await HTTPHelper.async_http_get(f"https://api.github.com/repos/{data.get('owner').get('login')}/{data.get('name')}/languages")
+        commits = await HTTPHelper.async_http_get(f"https://api.github.com/repos/{data.get('owner').get('login')}/{data.get('name')}/commits?per_page=100")
+        updated_at = None
+        pushed_at = None
+        if data.get('updated_at'):
+            updated_at = DBHelper.convert_date(data['updated_at'])
+        if data.get('pushed_at'):
+            pushed_at = DBHelper.convert_date(data['pushed_at'])
+        with DBHelper.get_cursor() as cursor:
+            cursor.callproc("update_repository_in_history", [
+                data.get('id'),
+                data.get('name'),
+                data.get('owner').get('login'),
+                data.get('owner').get('avatar_url'),
+                data.get('html_url'),
+                data.get('description'),
+                data.get('size'),
+                data.get('stargazers_count'),
+                data.get('watchers'),
+                data.get('default_branch'),
+                data.get('open_issues'),
+                data.get('subscribers_count'),
+                updated_at,
+                pushed_at
+            ])
+
+            cursor.callproc("clear_repository_languages", [
+                data.get('id')
+            ])
+
+            for lang in languages:
+                cursor.callproc("add_repository_language", [
+                    data.get('id'),
+                    lang,
+                    languages.get(lang)
+                ])
+            
+            cursor.callproc("clear_repository_topics", [
+                data.get('id')
+            ])
+
+            if data.get('topics'):
+                for topic in data.get('topics'):
+                    cursor.callproc("add_repository_topic", [
+                        data.get('id'),
+                        topic
+                    ])
+            
+            if data.get('license'):
+                cursor.callproc("add_or_update_repository_license", [
+                    data.get('id'),
+                    data.get('license').get('name'),
+                    data.get('license').get('spdx_id')
+                ])
+            else:
+                cursor.callproc("delete_repository_license", [
+                    data.get('id')
+                ])
+            
+            for commit in commits:
+                commit_date = DBHelper.convert_date(commit.get('commit').get('author').get('date'))
+                cursor.callproc("add_commit", [
+                data.get('id'),
+                commit.get('sha'),
+                commit.get('author').get('login'),
+                commit.get('author').get('avatar_url'),
+                commit.get('commit').get('message'),
+                commit_date,
+                commit.get('commit').get('url')
+            ])
+    
+    @staticmethod
+    def get_repository_by_id(id: int):
+        with DBHelper.get_cursor() as cursor:
+            repository = {}
+            repository = DBHelper.execute_get("get_repository_by_id", id)
+            repository1 = DBHelper.execute_get_all("get_repository_languages", str(id))
+            if repository:
+                repository['languages'] = DBHelper.execute_get_all("get_repository_languages", str(id))
+                repository['topics'] = DBHelper.execute_get_all("get_repository_topics", str(id))
+                repository['license'] = DBHelper.execute_get_all("get_repository_license", str(id))
+                repository['commits'] = DBHelper.execute_get_all("get_repository_commits", str(id))
+            print(repository)
+            return repository

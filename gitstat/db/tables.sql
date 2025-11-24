@@ -96,8 +96,8 @@ CREATE TABLE COMMITS (
     repository_id NUMBER NOT NULL REFERENCES repositories(git_id) ON DELETE CASCADE,
     sha VARCHAR2(50) NOT NULL UNIQUE,
     author_login VARCHAR2(100),
-    author_name VARCHAR2(200),
-    message VARCHAR2(200),
+    author_avatar_url VARCHAR2(255),
+    message VARCHAR2(2000),
     commit_date TIMESTAMP,
     url VARCHAR2(255)
 );

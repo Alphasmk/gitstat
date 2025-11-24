@@ -44,7 +44,7 @@ class LoginUser(BaseModel):
 def get_user_by_id(user_id: Optional[int]) -> Optional[User]:
     if not user_id:
         return None
-    user_db = DBHelper.execute_get_user("get_user_by_id", user_id)
+    user_db = DBHelper.execute_get("get_user_by_id", user_id)
     if user_db:
         return User.model_validate(user_db)
     return None
@@ -53,7 +53,7 @@ def get_user_by_id(user_id: Optional[int]) -> Optional[User]:
 def get_user_by_input(user_input: Optional[str]) -> Optional[User]:
     if not user_input:
         return None
-    user_db = DBHelper.execute_get_user("get_user_by_email_or_login", user_input)
+    user_db = DBHelper.execute_get("get_user_by_email_or_login", user_input)
     if user_db:
         return User.model_validate(user_db)
     return None

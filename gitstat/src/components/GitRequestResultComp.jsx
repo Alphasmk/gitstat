@@ -104,7 +104,6 @@ function GitRequestResultComp() {
                         <Spin indicator={<LoadingOutlined style={{ fontSize: 60, color: 'white' }} />} />
                     </div>
                 ) : null}
-        { pageType == 'Profile' ? (
         <Content style={{ padding: '0 0px', flex: 1 }}>
             <div
                 className='bg-container'
@@ -264,9 +263,10 @@ function GitRequestResultComp() {
                     </Space>
                     ) : (
                         <div>
+                            <pre style={{ color: "white" }}>{data && JSON.stringify(data, null, 2)}</pre>
                         </div>
                     )}
-                )
+                
             </div>
             <style jsx>{`
                     .bg-container {
@@ -292,7 +292,7 @@ function GitRequestResultComp() {
                     }
                     }
                     `}</style>
-        </Content>) : (<div></div>)}</>
+        </Content></>
     )
 }
 
