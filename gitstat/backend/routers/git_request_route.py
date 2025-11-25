@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, status, Request, Depends
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from urllib.parse import urlparse
-import requests
 import re
 from tools.db_helper import DBHelper
 from tools.http_helper import HTTPHelper

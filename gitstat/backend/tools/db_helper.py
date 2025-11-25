@@ -59,7 +59,6 @@ class DBHelper:
     @staticmethod
     def execute_get_all(proc_name: str, value: str | int):
         with DBHelper.get_cursor() as cursor:
-            print(type(value))
             ref_cursor = cursor.var(oracledb.CURSOR)
             cursor.callproc(proc_name, [value, ref_cursor])
             result_cursor = ref_cursor.getvalue()
@@ -193,8 +192,8 @@ class DBHelper:
                 cursor.callproc("add_commit", [
                 data.get('id'),
                 commit.get('sha'),
-                commit.get('author').get('login'),
-                commit.get('author').get('avatar_url'),
+                commit.get('author').get('login') if commit.get('author') else None,
+                commit.get('author').get('avatar_url') if commit.get('author') else None,
                 commit.get('commit').get('message'),
                 commit_date,
                 commit.get('commit').get('url')
@@ -260,14 +259,15 @@ class DBHelper:
                 cursor.callproc("delete_repository_license", [
                     data.get('id')
                 ])
-            
+
+
             for commit in commits:
                 commit_date = DBHelper.convert_date(commit.get('commit').get('author').get('date'))
                 cursor.callproc("add_commit", [
                 data.get('id'),
                 commit.get('sha'),
-                commit.get('author').get('login'),
-                commit.get('author').get('avatar_url'),
+                commit.get('author').get('login') if commit.get('author') else None,
+                commit.get('author').get('avatar_url') if commit.get('author') else None,
                 commit.get('commit').get('message'),
                 commit_date,
                 commit.get('commit').get('url')
@@ -278,7 +278,6 @@ class DBHelper:
         with DBHelper.get_cursor() as cursor:
             repository = {}
             repository = DBHelper.execute_get("get_repository_by_id", id)
-            repository1 = DBHelper.execute_get_all("get_repository_languages", str(id))
             if repository:
                 repository['languages'] = DBHelper.execute_get_all("get_repository_languages", str(id))
                 repository['topics'] = DBHelper.execute_get_all("get_repository_topics", str(id))

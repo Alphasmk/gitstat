@@ -372,7 +372,7 @@
         SELECT sha, author_login, author_avatar_url, message, commit_date, url FROM COMMITS WHERE COMMITS.repository_id = v_repository_id;
     END;
 
-    SELECT sha, author_login, author_avatar_url, message, commit_date, url FROM COMMITS WHERE COMMITS.repository_id = 36831874;
+    SELECT sha, author_login, author_avatar_url, message, commit_date, url FROM COMMITS WHERE COMMITS.repository_id = 1061065861;
     VAR c REFCURSOR
-    EXEC get_repository_commits(1080572853, :c)
+    EXEC get_repository_commits(1061065861, :c)
     PRINT c;
