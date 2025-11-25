@@ -17,7 +17,7 @@
     --Добавить репозиторий в историю
     CREATE OR REPLACE PROCEDURE add_repository_to_history
     (
-        git_id NUMBER,
+        git_id VARCHAR2,
         name VARCHAR2,
         owner_login VARCHAR2,
         owner_avatar_url VARCHAR2,
@@ -25,16 +25,20 @@
         description VARCHAR2,
         repo_size NUMBER,
         stars NUMBER,
-        watchers NUMBER,
+        forks NUMBER,
         default_branch VARCHAR2,
         open_issues NUMBER,
-        subscribers_count NUMBER,
+        subscribers_count VARCHAR2,
         created_at TIMESTAMP,
         updated_at TIMESTAMP,
         pushed_at TIMESTAMP
     )
     AS
+        v_git_id NUMBER;
+        v_subscribers_count NUMBER;
     BEGIN
+        v_git_id := TO_NUMBER(git_id);
+        v_subscribers_count := TO_NUMBER(subscribers_count);
         INSERT
         INTO REPOSITORIES
         (
@@ -46,7 +50,7 @@
             description,
             repo_size,
             stars,
-            watchers,
+            forks,
             default_branch,
             open_issues,
             subscribers_count,
@@ -55,7 +59,7 @@
             pushed_at
         )
         VALUES (
-            git_id,
+            v_git_id,
             name,
             owner_login,
             owner_avatar_url,
@@ -63,10 +67,10 @@
             description,
             repo_size,
             stars,
-            watchers,
+            forks,
             default_branch,
             open_issues,
-            subscribers_count,
+            v_subscribers_count,
             created_at,
             updated_at,
             pushed_at
@@ -80,10 +84,10 @@
     
     DROP PROCEDURE add_repository_to_history;
 
-    --Добавить репозиторий в историю
+    --Обновить репозиторий в истории
     CREATE OR REPLACE PROCEDURE update_repository_in_history
     (
-        git_id NUMBER,
+        git_id VARCHAR2,
         name VARCHAR2,
         owner_login VARCHAR2,
         owner_avatar_url VARCHAR2,
@@ -91,15 +95,19 @@
         description VARCHAR2,
         repo_size NUMBER,
         stars NUMBER,
-        watchers NUMBER,
+        forks NUMBER,
         default_branch VARCHAR2,
         open_issues NUMBER,
-        subscribers_count NUMBER,
+        subscribers_count VARCHAR2,
         updated_at TIMESTAMP,
         pushed_at TIMESTAMP
     )
     AS
+        v_git_id NUMBER;
+        v_subscribers_count NUMBER;
     BEGIN
+        v_git_id := TO_NUMBER(git_id);
+        v_subscribers_count := TO_NUMBER(subscribers_count);
         UPDATE REPOSITORIES SET
         REPOSITORIES.NAME = name,
         REPOSITORIES.owner_login = owner_login,
@@ -108,13 +116,13 @@
         REPOSITORIES.description = description,
         REPOSITORIES.repo_size = repo_size,
         REPOSITORIES.stars = stars,
-        REPOSITORIES.watchers = watchers,
+        REPOSITORIES.forks = forks,
         REPOSITORIES.default_branch = default_branch,
         REPOSITORIES.open_issues = open_issues,
-        REPOSITORIES.subscribers_count = subscribers_count,
+        REPOSITORIES.subscribers_count = v_subscribers_count,
         REPOSITORIES.updated_at = updated_at,
         REPOSITORIES.pushed_at = pushed_at
-        WHERE REPOSITORIES.GIT_ID = git_id;
+        WHERE REPOSITORIES.GIT_ID = v_git_id;
     EXCEPTION
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20003, 'Ошибка при изменении репозитория: ' || SQLERRM);
@@ -154,11 +162,13 @@
 
     CREATE OR REPLACE PROCEDURE clear_repository_languages
     (
-        repository_id NUMBER
+        repository_id VARCHAR2
     )
     AS
+        v_repository_id NUMBER;
     BEGIN
-        DELETE FROM REPOSITORY_LANGUAGES WHERE REPOSITORY_LANGUAGES.REPOSITORY_ID = repository_id;
+        v_repository_id := TO_NUMBER(repository_id);
+        DELETE FROM REPOSITORY_LANGUAGES WHERE REPOSITORY_LANGUAGES.REPOSITORY_ID = v_repository_id;
     EXCEPTION
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20009, 'Ошибка при удалении языков: ' || SQLERRM);
@@ -309,20 +319,34 @@
             VALUES (src.repository_id, src.sha, src.author_login, src.author_avatar_url, src.message, src.commit_date, src.url);
     END;
 
+    --Получить репозиторий по id
     CREATE OR REPLACE PROCEDURE get_repository_by_id
     (
-        repository_id IN NUMBER,
+        repository_id IN VARCHAR,
         user_cursor OUT SYS_REFCURSOR
     )
     AS
+        v_repository_id NUMBER;
     BEGIN
+        v_repository_id := TO_NUMBER(repository_id);
         OPEN user_cursor FOR
-        SELECT * FROM REPOSITORIES WHERE REPOSITORIES.GIT_ID = repository_id;
+        SELECT a.*, b.REQUEST_TIME
+        FROM REPOSITORIES a 
+        LEFT JOIN REQUEST_HISTORY b
+        ON a.GIT_ID = b.REPOSITORY_ID
+        WHERE a.GIT_ID = v_repository_id
+        AND (b.REQUEST_TIME IS NULL OR NOT EXISTS (
+            SELECT 1 
+            FROM REQUEST_HISTORY b2
+            WHERE b2.REPOSITORY_ID = b.REPOSITORY_ID
+            AND b2.REQUEST_TIME > b.REQUEST_TIME
+        ));
     END;
 
+    --Получить языки репозитория
     CREATE OR REPLACE PROCEDURE get_repository_languages
     (
-        repository_id IN VARCHAR,
+        repository_id IN VARCHAR2,
         user_cursor OUT SYS_REFCURSOR
     )
     AS
@@ -333,6 +357,7 @@
         SELECT language, bytes_count FROM REPOSITORY_LANGUAGES WHERE REPOSITORY_LANGUAGES.repository_id = v_repository_id;
     END;
 
+    --Получить темы репозитория
     CREATE OR REPLACE PROCEDURE get_repository_topics
     (
         repository_id IN VARCHAR,
@@ -346,6 +371,7 @@
         SELECT topic FROM REPOSITORY_TOPICS WHERE REPOSITORY_TOPICS.repository_id = v_repository_id;
     END;
 
+    --Получить лицензию репозитория
     CREATE OR REPLACE PROCEDURE get_repository_license
     (
         repository_id IN VARCHAR,
@@ -358,7 +384,8 @@
         OPEN user_cursor FOR
         SELECT license_name, spdx_id FROM REPOSITORY_LICENSES WHERE REPOSITORY_LICENSES.repository_id = v_repository_id;
     END;
-
+    
+    --Получить коммиты репозитория
     CREATE OR REPLACE PROCEDURE get_repository_commits
     (
         repository_id IN VARCHAR,
@@ -369,10 +396,23 @@
     BEGIN
         v_repository_id := TO_NUMBER(repository_id);
         OPEN user_cursor FOR
-        SELECT sha, author_login, author_avatar_url, message, commit_date, url FROM COMMITS WHERE COMMITS.repository_id = v_repository_id;
+        SELECT sha, author_login, author_avatar_url, commit_date, url FROM COMMITS WHERE COMMITS.repository_id = v_repository_id;
     END;
 
-    SELECT sha, author_login, author_avatar_url, message, commit_date, url FROM COMMITS WHERE COMMITS.repository_id = 1061065861;
+    --Проверить, есть ли информация по репозиторию в базе данных
+    CREATE OR REPLACE PROCEDURE is_repository_info_exist
+    (
+        repository_id IN VARCHAR,
+        rows_count OUT NUMBER
+    )
+    AS
+    BEGIN
+        SELECT count(*) INTO rows_count FROM REPOSITORIES WHERE REPOSITORIES.GIT_ID = v_repository_id;
+    END;
+
+    SELECT sha, author_login, author_avatar_url, commit_date, url FROM COMMITS WHERE COMMITS.repository_id = 1061065861;
+
+
     VAR c REFCURSOR
-    EXEC get_repository_commits(1061065861, :c)
+    EXEC get_repository_languages(1061065861, :c)
     PRINT c;

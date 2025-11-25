@@ -42,7 +42,7 @@ CREATE TABLE REPOSITORIES
     description VARCHAR2(1000),
     repo_size NUMBER,
     stars NUMBER,
-    watchers NUMBER,
+    forks NUMBER,
     default_branch VARCHAR2(20) DEFAULT 'main',
     open_issues NUMBER,
     subscribers_count NUMBER,
@@ -97,10 +97,11 @@ CREATE TABLE COMMITS (
     sha VARCHAR2(50) NOT NULL UNIQUE,
     author_login VARCHAR2(100),
     author_avatar_url VARCHAR2(255),
-    message VARCHAR2(2000),
     commit_date TIMESTAMP,
     url VARCHAR2(255)
 );
+
+CREATE INDEX idx_commit_repo_id ON COMMITS(repository_id);
 
 DROP TABLE USERS;
 DROP TABLE PROFILES;

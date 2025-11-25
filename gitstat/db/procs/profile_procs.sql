@@ -170,3 +170,17 @@
                 RAISE_APPLICATION_ERROR(-20017, 'Ошибка при обновлении профиля: ' || SQLERRM);
             END IF;
     END;
+
+    --Получить все репозитории пользователя
+    CREATE OR REPLACE PROCEDURE get_profile_repositories
+    (
+        p_owner_login IN VARCHAR2,
+        user_cursor OUT SYS_REFCURSOR
+    )
+    AS
+    BEGIN
+        OPEN user_cursor FOR
+        SELECT name, owner_login, owner_avatar_url, html_url, description, git_id FROM REPOSITORIES WHERE UPPER(REPOSITORIES.OWNER_LOGIN) = UPPER(p_owner_login);
+    END;
+
+    SELECT * FROM REPOSITORY_LANGUAGES WHERE REPOSITORY_LANGUAGES.REPOSITORY_ID = 781942668;

@@ -17,9 +17,9 @@ class RegisterUser(BaseModel):
 
 @router.post("/register", response_class=JSONResponse)
 async def register_user(form_data: RegisterUser, db: Session = Depends(DBHelper.get_db)):
-    existing_user = DBHelper.execute_get_user("get_user_by_email_or_login", form_data.username)
+    existing_user = DBHelper.execute_get("get_user_by_email_or_login", form_data.username)
     if not existing_user:
-        DBHelper.execute_get_user("get_user_by_email_or_login", form_data.email)
+        DBHelper.execute_get("get_user_by_email_or_login", form_data.email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
