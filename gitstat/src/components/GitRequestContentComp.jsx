@@ -28,13 +28,6 @@ function GitRequestContentComp() {
     const onRequestFinish = async (values) => {
         if (values.input.trim() != "") {
             navigate(`/git_result?stroke=${values.input}`)
-            // await fetch(`http://localhost:8000/git_info?stroke=${encodeURIComponent(values.input)}`, {
-            //     method: 'GET',
-            //     credentials: 'include'
-            // })
-            //     .then(resp => resp.json())
-            //     .then(data => openNotification('Успех!', JSON.stringify(data, null, 2)))
-            //     .catch(e => openNotification('Ошибка!', String(e)))
         }
     }
 
@@ -57,7 +50,7 @@ function GitRequestContentComp() {
                             transform: isInputFocused ? 'scale(1)' : 'scale(0.9)',
                             transition: 'transform 0.3s ease'
                         }} level={3}>
-                            Получите статистику по любому<br />
+                            Получите информацию по любому<br />
                             GitHub репозиторию или профилю
                         </Typography.Title>
 

@@ -41,27 +41,27 @@ class LoginUser(BaseModel):
     password: str
 
 
-def get_user_by_id(user_id: Optional[int]) -> Optional[User]:
+async def get_user_by_id(user_id: Optional[int]) -> Optional[User]:
     if not user_id:
         return None
-    user_db = DBHelper.execute_get("get_user_by_id", user_id)
+    user_db = await DBHelper.execute_get("get_user_by_id", user_id)
     if user_db:
         return User.model_validate(user_db)
     return None
 
 
-def get_user_by_input(user_input: Optional[str]) -> Optional[User]:
+async def get_user_by_input(user_input: Optional[str]) -> Optional[User]:
     if not user_input:
         return None
-    user_db = DBHelper.execute_get("get_user_by_email_or_login", user_input)
+    user_db = await DBHelper.execute_get("get_user_by_email_or_login", user_input)
     if user_db:
         return User.model_validate(user_db)
     return None
 
 
-def authenticate_user(user_input: str, password: str) -> Optional[User]:
+async def authenticate_user(user_input: str, password: str) -> Optional[User]:
     """Проверка логина и пароля пользователя."""
-    user = get_user_by_input(user_input)
+    user = await get_user_by_input(user_input)
     if not user:
         return None
     if not Hasher.verify_password(password, user.password_hash):
@@ -93,7 +93,7 @@ async def get_current_user(access_token: Optional[str] = Cookie(default=None)) -
             detail="Недействительный токен"
         )
 
-    user = get_user_by_id(user_id)
+    user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -117,7 +117,7 @@ async def read_users_me(current_user: User = Depends(get_current_user)) -> User:
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(response: Response, form_data: LoginUser) -> Token:
-    user = authenticate_user(form_data.input.lower(), form_data.password)
+    user = await authenticate_user(form_data.input.lower(), form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

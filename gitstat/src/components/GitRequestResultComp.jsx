@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { LoadingOutlined } from '@ant-design/icons';
 import { Spin, Layout, Flex, Result, Button, Space, Col, Row, Typography, Tooltip, Divider, List, Radio } from "antd";
 import { useLocation, useNavigate } from 'react-router-dom';
-import QueueAnim from 'rc-queue-anim';
+import LanguagesDiagram from "./LanguagesDiagram.jsx";
 import ReloadButton from "./ReloadButton";
 import LinkButton from "./LinkButton";
 import EmailImage from "../images/email.png"
@@ -17,8 +17,11 @@ import ForksImage from "../images/forks.png"
 import CodeImage from "../images/code.png"
 import IssuesImage from "../images/issues.png"
 import FollowersImage from "../images/followers.png"
+import LicenseImage from "../images/license.png"
+import { languageIcons } from "./languageIcons.jsx";
 
 const { Content } = Layout;
+
 
 function formatDateTime(dateString) {
     const date = new Date(dateString);
@@ -42,6 +45,7 @@ function formatDate(dateString) {
 function GitRequestResultComp() {
     console.log('typeof Result:', typeof Result);
     const [loading, setLoading] = useState(true);
+    const [showSlowLoadingMessage, setShowSlowLoadingMessage] = useState(false);
     const [isOk, setIsOk] = useState(true);
     const [errorData, setErrorData] = useState("");
     const [data, setData] = useState(null);
@@ -55,6 +59,11 @@ function GitRequestResultComp() {
         setLoading(true);
         setData(null);
         setIsOk(true);
+        setShowSlowLoadingMessage(false);
+
+        const slowLoadingTimer = setTimeout(() => {
+            setShowSlowLoadingMessage(true);
+        }, 3000);
 
         const endpoint = isRenew ? 'new_git_info' : 'check_git_info';
         const params = new URLSearchParams(search);
@@ -63,6 +72,7 @@ function GitRequestResultComp() {
             method: isRenew ? 'GET' : 'POST',
             credentials: 'include'
         }).then(resp => {
+            clearTimeout(slowLoadingTimer);
             console.log(typeof (resp.ok));
             if (!resp.ok) {
                 return resp.json().then(errorData => {
@@ -90,6 +100,7 @@ function GitRequestResultComp() {
                 setLoading(false);
             })
             .catch(err => {
+                clearTimeout(slowLoadingTimer);
                 console.error(err);
                 setIsOk(false);
                 setLoading(false);
@@ -108,7 +119,20 @@ function GitRequestResultComp() {
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
                 }}>
-                    <Spin indicator={<LoadingOutlined style={{ fontSize: 60, color: 'white' }} />} />
+                    <div style={{
+                        color: '#8EAEE3',
+                        fontSize: 16,
+                        maxWidth: 600,
+                        textAlign: 'center',
+                        opacity: showSlowLoadingMessage ? 1 : 0,
+                        transition: 'opacity 0.5s ease-in-out',
+                        pointerEvents: showSlowLoadingMessage ? 'auto' : 'none',
+                        marginBottom: 15,
+                        fontWeight: 600
+                    }}>
+                        Загрузка может идти дольше, если запрос по GitHub еще не проводился, или если вы обновляете данные
+                    </div>
+                    <Spin indicator={<LoadingOutlined style={{ fontSize: 60, marginBottom: 15, color: 'white' }} />} />
                 </div>
             ) : null}
             <Content style={{ padding: '0 0px', flex: 1 }}>
@@ -264,11 +288,11 @@ function GitRequestResultComp() {
                                                 <List
                                                     dataSource={data.repositories}
                                                     pagination={{
-                                                        pageSize: 5,
+                                                        pageSize: 6,
                                                         showSizeChanger: false,
                                                         align: 'center',
                                                         position: 'bottom',
-                                                        showLessItems: true
+                                                        showLessItems: false
                                                     }}
                                                     renderItem={(repo) => (
                                                         <List.Item
@@ -292,13 +316,34 @@ function GitRequestResultComp() {
                                                             }}
                                                         >
                                                             <div style={{ width: "100%" }}>
-                                                                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+                                                                <div style={{ display: "flex", alignItems: "flex-start", marginBottom: 10 }}>
                                                                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", flex: 1 }}>
-                                                                        <div style={{ color: "white", fontSize: 20, fontWeight: 600 }}>
-                                                                            {repo.name}
+                                                                        <div style={{ color: "white", fontSize: 24, fontWeight: 600, display: "flex", alignItems: "center" }}>
+                                                                            {repo.name} {repo.languages && repo.languages.length > 0 && (
+                                                                                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginLeft: 5 }}>
+                                                                                    {repo.languages
+                                                                                        .slice(0, 8)
+                                                                                        .filter(lang => languageIcons[lang.language])
+                                                                                        .map((lang, idx) => (
+                                                                                            <Tooltip key={idx} title={lang.language} placement="top">
+                                                                                                <img
+                                                                                                    src={languageIcons[lang.language]}
+                                                                                                    alt={lang.language}
+                                                                                                    style={{
+                                                                                                        height: 22,
+                                                                                                        width: 22,
+                                                                                                        objectFit: "contain",
+                                                                                                        cursor: "pointer"
+                                                                                                    }}
+                                                                                                />
+                                                                                            </Tooltip>
+                                                                                        ))
+                                                                                    }
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                         {repo.description && (
-                                                                            <div style={{ color: "white", fontSize: 14, marginTop: 4 }}>
+                                                                            <div style={{ color: "white", fontSize: 14, marginTop: 4, textAlign: "left" }}>
                                                                                 {repo.description}
                                                                             </div>
                                                                         )}
@@ -307,45 +352,10 @@ function GitRequestResultComp() {
                                                                         ID: {repo.git_id}
                                                                     </div>
                                                                 </div>
-
-                                                                {repo.languages && repo.languages.length > 0 && (
-                                                                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                                                        {repo.languages.slice(0, 5).map((lang, idx) => (
-                                                                            <div
-                                                                                key={idx}
-                                                                                style={{
-                                                                                    backgroundColor: "#343E50",
-                                                                                    padding: "4px 12px",
-                                                                                    borderRadius: 12,
-                                                                                    color: "white",
-                                                                                    fontSize: 14,
-                                                                                    fontWeight: 500
-                                                                                }}
-                                                                            >
-                                                                                {lang.language}
-                                                                            </div>
-                                                                        ))}
-                                                                        {repo.languages.length > 5 && (
-                                                                            <div
-                                                                                style={{
-                                                                                    backgroundColor: "#262E3B",
-                                                                                    padding: "4px 12px",
-                                                                                    borderRadius: 12,
-                                                                                    color: "#8EAEE3",
-                                                                                    fontSize: 14,
-                                                                                    fontWeight: 500
-                                                                                }}
-                                                                            >
-                                                                                +{repo.languages.length - 5}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                )}
                                                             </div>
                                                         </List.Item>
                                                     )}
                                                 />
-
                                             </div>
                                         ) : (
                                             <div style={{ color: "#8EAEE3", fontSize: 18 }}>
@@ -361,7 +371,6 @@ function GitRequestResultComp() {
                                     </Col>
                                 </Row>
                             </div>
-                            <pre style={{ color: "white" }}>{data && JSON.stringify(data, null, 2)}</pre>
                         </Space>
                     ) : (
                         <Space direction="vertical" style={{ width: '90%', display: loading ? "none" : "block" }}>
@@ -369,9 +378,11 @@ function GitRequestResultComp() {
                                 <Col span={8} style={{ borderRadius: "25px 0 0 25px", display: "flex", justifyContent: "flex-start", alignItems: "center", padding: 20 }}>
                                     <Space direction="vertical" size={0}>
                                         {data?.owner_avatar_url && data?.owner_login ? (
-                                            <div style={{ color: "white", fontSize: 20, fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
-                                                <img src={data.owner_avatar_url} alt="avatar" style={{ height: 34, borderRadius: '30%', display: "block" }} />
-                                                {data.owner_login}
+                                            <div style={{ color: "white", fontSize: 20, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }} onClick={() => {
+                                                                navigate(`/git_result?stroke=${encodeURIComponent(data.owner_login)}`);
+                                                            }}>
+                                                <div style={{display: "flex"}}><img src={data.owner_avatar_url} alt="avatar" style={{ height: 34, borderRadius: '30%', display: "block", marginRight: 5 }} />
+                                                {data.owner_login}</div>
                                             </div>
                                         ) : (
                                             <Spin indicator={<LoadingOutlined />} />
@@ -412,7 +423,7 @@ function GitRequestResultComp() {
                             </Row>
                             <Row>
                                 <Col style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-                                    <div style={{ height: 60, backgroundColor: "#262E3B", marginTop: -30, borderRadius: 16, color: "white", fontWeight: 600, fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: 5 }}>
+                                    <div style={{ height: 60, backgroundColor: "#262E3B", marginTop: -20, borderRadius: 16, color: "white", fontWeight: 600, fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: 5 }}>
                                         <Tooltip placement="top" title="ID на GitHub">
                                             <div style={{ display: "flex", alignItems: "center", gap: 3, margin: 10 }}>
                                                 <img src={IdImage} style={{ height: 22 }} />{data?.git_id}
@@ -448,12 +459,93 @@ function GitRequestResultComp() {
                                                 <img src={FollowersImage} style={{ height: 22 }} />{data?.subscribers_count ? data?.subscribers_count : 0}
                                             </div>
                                         </Tooltip>
+                                        {data?.license.length > 0 && (
+                                            <Tooltip placement="top" title="Лицензия">
+                                            <div style={{ display: "flex", alignItems: "center", gap: 3, margin: 10 }}>
+                                                <img src={LicenseImage} style={{height: 26}}></img>{data.license[0].license_name}
+                                            </div>
+                                        </Tooltip>
+                                        )}
                                     </div>
                                 </Col>
                             </Row>
-                            <div>
-                                <pre style={{ color: "white" }}>{data && JSON.stringify(data, null, 2)}</pre>
-                            </div>
+                            {data?.description && (
+                                <Row style={{backgroundColor: "#1C232F", borderRadius: 25, marginTop: -20, color: "white", paddingTop: 40, paddingBottom: 40, paddingLeft: 20, paddingRight: 20, textAlign: "left", fontWeight: 600}}>
+                                    <Col>
+                                        <span style={{fontSize: 18}}>{data.description}</span>
+                                    </Col>
+                                </Row>
+                            )}
+                            <Row style={{ backgroundColor: "#1C232F", borderRadius: 25, marginTop: data?.description ? 20 : -20, padding: 30 }}>
+                                <Col span={12} style={{display: "flex", alignContent: "center", justifyContent: "center"}}>
+                                    {data?.commits && data.commits.length > 0 ? (
+                                        <div style={{ width: "90%" }}>
+                                            <div style={{ color: "white", fontSize: 28, fontWeight: 700, marginBottom: 20 }}>
+                                                Коммиты ({data.commits.length})
+                                            </div>
+                                            <List
+                                                dataSource={data.commits}
+                                                pagination={{
+                                                    pageSize: 6,
+                                                    showSizeChanger: false,
+                                                    align: 'center',
+                                                    position: 'bottom',
+                                                    showLessItems: false
+                                                }}
+                                                renderItem={(commit) => (
+                                                    <List.Item
+                                                        style={{
+                                                            backgroundColor: "#262E3B",
+                                                            borderRadius: 15,
+                                                            marginBottom: 15,
+                                                            padding: 20,
+                                                            border: "none",
+                                                            cursor: "pointer",
+                                                            transition: "0.3s"
+                                                        }}
+                                                        onClick={() => {
+                                                            window.open(commit.url, '_blank');
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.backgroundColor = "#354052";
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.backgroundColor = "#262E3B";
+                                                        }}
+                                                    >
+                                                        <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 15 }}>
+                                                            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", flex: 1 }}>
+                                                                <div style={{ color: "white", fontSize: 18, fontWeight: 600, marginBottom: 5, display: "flex", alignItems: "center" }}>
+                                                                    {commit.author_avatar_url && <img src={commit.author_avatar_url} style={{height: 30, borderRadius: 10, marginRight: 10}}/>}
+                                                                    Автор: {commit.author_login ? commit.author_login : "Неизвестно"}
+                                                                </div>
+                                                                <div style={{ color: "#8EAEE3", fontSize: 14, fontFamily: "monospace" }}>
+                                                                    SHA: {commit.sha}
+                                                                </div>
+                                                            </div>
+                                                            <div style={{ color: "#8EAEE3", fontSize: 14, whiteSpace: "nowrap" }}>
+                                                                {formatDateTime(commit.commit_date)}
+                                                            </div>
+                                                        </div>
+                                                    </List.Item>
+                                                )}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div style={{ color: "#8EAEE3", fontSize: 18 }}>
+                                            Коммиты не найдены
+                                        </div>
+                                    )}
+
+                                </Col>
+                                <Col span={12}>
+                                    {data && <LanguagesDiagram languages={data?.languages} />}
+                                </Col>
+                            </Row>
+{/* 
+                                <div>
+                                    <pre style={{ color: "white" }}>{data && JSON.stringify(data, null, 2)}</pre>
+                                </div> */}
                         </Space>
                     )}
 
@@ -483,13 +575,13 @@ function GitRequestResultComp() {
 
                     .ant-pagination-item{
                         background-color: transparent !important;
-                        color: white !important;
-                        border: 1px solid white !important;
+                        color: #8EAEE3 !important;
+                        border: 1px solid #8EAEE3 !important;
                         transition: 0.3s;
                     }
                     
                     .ant-pagination-item:hover{
-                        background-color: white !important;
+                        background-color: #8EAEE3 !important;
                     }
                     
                     .ant-pagination-item:hover a{
@@ -497,15 +589,17 @@ function GitRequestResultComp() {
                     }
 
                     .ant-pagination-item a{
-                        color: white !important;
+                        color: #8EAEE3 !important;
                     }
 
-                    .ant-pagination-prev {
-                        display: none !important;
+                    .ant-pagination-item-link {
+                      color: #8EAEE3 !important;
                     }
-                    
-                    .ant-pagination-next {
-                        display: none !important;
+
+                    .ant-pagination-item-link,
+                    .ant-pagination-item-link-icon,
+                    .ant-pagination-item-ellipsis {
+                      color: #8EAEE3!important;
                     }
                     `}</style>
             </Content></>

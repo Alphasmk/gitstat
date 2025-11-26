@@ -55,8 +55,8 @@ async def get_github_response(result):
         response = await HTTPHelper.async_http_get(f"https://api.github.com/repos/{result.username}/{result.repository}")
     return response
 
-def get_count_of_rows(proc: str, id: int):
-    return DBHelper.is_was_request(proc, id)
+async def get_count_of_rows(proc: str, id: int):
+    return await DBHelper.is_was_request(proc, id)
 
 @router.post('/check_git_info', response_class=RedirectResponse)
 async def check_git_info(stroke: str, current_user = Depends(get_current_user)):
@@ -66,17 +66,15 @@ async def check_git_info(stroke: str, current_user = Depends(get_current_user)):
         response = await get_github_response(result)
         
         if response.get('status'):
-            if response.get('status') == "404":
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Не найдено")
-        
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Не найдено")
         if result.type == "profile":
-            count = get_count_of_rows("is_was_profile_request", response['id'])
+            count = await get_count_of_rows("is_was_profile_request", response['id'])
             if count > 0:
                 return RedirectResponse(url=f'/git_info?findby={result.username}', status_code=303)
             else:
                 return RedirectResponse(url=f'/new_git_info?stroke={stroke}', status_code=303)
         else:
-            count = get_count_of_rows("is_repository_info_exist", response['id'])
+            count = await get_count_of_rows("is_repository_info_exist", response['id'])
             if count > 0:
                 return RedirectResponse(url=f'/git_info?findby={response.get("id")}', status_code=303)
             else:
@@ -93,16 +91,16 @@ async def check_git_info(stroke: str, current_user = Depends(get_current_user)):
 async def get_git_info(findby: str):
     try:
         if isint(findby):
-            git_info = DBHelper.get_repository_by_id(int(findby))
+            git_info = await DBHelper.get_repository_by_id(int(findby))
             if git_info:
                 git_info['response_type'] = 'Repository'
         else:
-            git_info = DBHelper.execute_get("get_profile_by_name", findby)
+            git_info = await DBHelper.execute_get("get_profile_by_name", findby)
             if git_info:
-                repos = DBHelper.get_user_repos_from_db(findby)
+                repos = await DBHelper.get_user_repos_from_db(findby)
                 for repo in repos:
                     repo_id = repo.get('git_id')
-                    languages = DBHelper.execute_get_all("get_repository_languages", str(repo_id))
+                    languages = await DBHelper.execute_get_all("get_repository_languages", str(repo_id))
                     repo['languages'] = languages if languages else []
                 git_info['response_type'] = 'Profile'
                 git_info['repositories'] = repos
@@ -121,17 +119,17 @@ async def renew_git_info(stroke: str, current_user = Depends(get_current_user)):
         result = RequestType.model_validate(user_input)
         response = await get_github_response(result)
         if response.get('status'):
-            if response.get('status') == "404":
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Не найдено")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Не найдено")
         if result.type == "profile":
-            count = get_count_of_rows("is_was_profile_request", response['id'])
-            await DBHelper.get_user_repos_from_git(response.get("login"))
+            count = await get_count_of_rows("is_was_profile_request", response['id'])
+            print(count)
+            await DBHelper.get_user_repos_from_git(response.get("login"), current_user)
             if count == 0:
-                DBHelper.add_profile_to_history(response)
+                await DBHelper.add_profile_to_history(response)
             else:
-                DBHelper.update_profile_history(response)
-            with DBHelper.get_cursor() as cursor:
-                    cursor.callproc("add_request_to_general_history", [
+                await DBHelper.update_profile_history(response)
+            async with DBHelper.get_cursor() as cursor:
+                    await cursor.callproc("add_request_to_general_history", [
                         current_user.id,
                         None,
                         response.get('id'),
@@ -139,18 +137,12 @@ async def renew_git_info(stroke: str, current_user = Depends(get_current_user)):
                     ])
             return RedirectResponse(url=f'/git_info?findby={result.username}', status_code=303)
         else:
-            await DBHelper.process_repository(response)
-            with DBHelper.get_cursor() as cursor:
-                cursor.callproc("add_request_to_general_history", [
-                    current_user.id,
-                    response.get('id'),
-                    None,
-                    'REPOSITORY' 
-                ])
+            await DBHelper.process_repository(response, current_user)
+            
             return RedirectResponse(url=f'/git_info?findby={response.get('id')}', status_code=303)
     except HTTPException as e:
         raise
     except Exception as e:
         status_code = getattr(e, 'status_code', 500)
         detail = getattr(e, 'detail', "Ошибка при отправке запроса")
-        raise HTTPException(status_code=status_code, detail=detail)
+        raise HTTPException(status_code=status_code, detail=str(e))

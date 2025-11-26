@@ -180,7 +180,10 @@
     AS
     BEGIN
         OPEN user_cursor FOR
-        SELECT name, owner_login, owner_avatar_url, html_url, description, git_id FROM REPOSITORIES WHERE UPPER(REPOSITORIES.OWNER_LOGIN) = UPPER(p_owner_login);
+        SELECT name, owner_login, owner_avatar_url, html_url, description, git_id
+        FROM REPOSITORIES
+        WHERE UPPER(REPOSITORIES.OWNER_LOGIN) = UPPER(p_owner_login)
+        ORDER BY pushed_at DESC NULLS LAST;
     END;
 
     SELECT * FROM REPOSITORY_LANGUAGES WHERE REPOSITORY_LANGUAGES.REPOSITORY_ID = 781942668;
