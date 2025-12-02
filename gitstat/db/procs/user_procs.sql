@@ -27,7 +27,7 @@
     AS
     BEGIN
         OPEN user_cursor FOR
-        SELECT * FROM USERS WHERE USERS.EMAIL = user_input OR USERS.USERNAME = user_input;
+        SELECT * FROM USERS WHERE LOWER(USERS.EMAIL) = LOWER(user_input) OR LOWER(USERS.USERNAME) = LOWER(user_input);
     EXCEPTION
         WHEN OTHERS THEN
             IF user_cursor%ISOPEN THEN
@@ -69,3 +69,16 @@
     END;
 
     DROP PROCEDURE get_user_by_id;
+
+    --Получить количество пользователей
+    CREATE OR REPLACE PROCEDURE get_total_users_count
+    (
+        p_count OUT NUMBER
+    )
+    AS
+    BEGIN
+        SELECT COUNT(*) INTO p_count FROM USERS;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20002, 'Ошибка при подсчете пользователей: ' || SQLERRM);
+    END;

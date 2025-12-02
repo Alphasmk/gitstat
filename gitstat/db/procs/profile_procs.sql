@@ -180,10 +180,25 @@
     AS
     BEGIN
         OPEN user_cursor FOR
-        SELECT name, owner_login, owner_avatar_url, html_url, description, git_id
-        FROM REPOSITORIES
-        WHERE UPPER(REPOSITORIES.OWNER_LOGIN) = UPPER(p_owner_login)
-        ORDER BY pushed_at DESC NULLS LAST;
+        SELECT 
+            r.name, 
+            p.login AS owner_login,
+            p.avatar_url AS owner_avatar_url,
+            r.html_url, 
+            r.description, 
+            r.git_id,
+            r.pushed_at
+        FROM REPOSITORIES r
+        INNER JOIN PROFILES p ON r.owner_git_id = p.git_id
+        WHERE UPPER(p.login) = UPPER(p_owner_login)
+        ORDER BY r.pushed_at DESC NULLS LAST;
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF user_cursor%ISOPEN THEN
+                CLOSE user_cursor;
+            END IF;
+            RAISE_APPLICATION_ERROR(-20018, 'Ошибка при получении репозиториев профиля: ' || SQLERRM);
     END;
+    
 
     SELECT * FROM REPOSITORY_LANGUAGES WHERE REPOSITORY_LANGUAGES.REPOSITORY_ID = 781942668;

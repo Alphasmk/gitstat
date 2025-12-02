@@ -19,8 +19,7 @@
     (
         p_git_id VARCHAR2,
         p_name VARCHAR2,
-        p_owner_login VARCHAR2,
-        p_owner_avatar_url VARCHAR2,
+        p_owner_git_id NUMBER,
         p_html_url VARCHAR2,
         p_description VARCHAR2,
         p_repo_size NUMBER,
@@ -36,16 +35,17 @@
     AS
         v_git_id NUMBER;
         v_subscribers_count NUMBER;
+        v_owner_git_id NUMBER;
     BEGIN
         v_git_id := TO_NUMBER(p_git_id);
         v_subscribers_count := TO_NUMBER(p_subscribers_count);
+        v_owner_git_id := TO_NUMBER(p_owner_git_id);
         INSERT
         INTO REPOSITORIES
         (
             git_id,
             name,
-            owner_login,
-            owner_avatar_url,
+            owner_git_id,
             html_url,
             description,
             repo_size,
@@ -61,8 +61,7 @@
         VALUES (
             v_git_id,
             p_name,
-            p_owner_login,
-            p_owner_avatar_url,
+            v_owner_git_id,
             p_html_url,
             p_description,
             p_repo_size,
@@ -89,8 +88,6 @@
     (
         p_git_id VARCHAR2,
         p_name VARCHAR2,
-        p_owner_login VARCHAR2,
-        p_owner_avatar_url VARCHAR2,
         p_html_url VARCHAR2,
         p_description VARCHAR2,
         p_repo_size NUMBER,
@@ -110,8 +107,6 @@
         v_subscribers_count := TO_NUMBER(p_subscribers_count);
         UPDATE REPOSITORIES SET
         REPOSITORIES.NAME = p_name,
-        REPOSITORIES.owner_login = p_owner_login,
-        REPOSITORIES.owner_avatar_url = p_owner_avatar_url,
         REPOSITORIES.html_url = p_html_url,
         REPOSITORIES.description = p_description,
         REPOSITORIES.repo_size = p_repo_size,
@@ -328,17 +323,27 @@
     BEGIN
         v_repository_id := TO_NUMBER(p_repository_id);
         OPEN user_cursor FOR
-        SELECT a.*, b.REQUEST_TIME
-        FROM REPOSITORIES a 
-        LEFT JOIN REQUEST_HISTORY b
-        ON a.GIT_ID = b.REPOSITORY_ID
-        WHERE a.GIT_ID = v_repository_id
-        AND (b.REQUEST_TIME IS NULL OR NOT EXISTS (
+        SELECT 
+            r.*, 
+            p.login AS owner_login,
+            p.avatar_url AS owner_avatar_url,
+            h.REQUEST_TIME
+        FROM REPOSITORIES r
+        INNER JOIN PROFILES p ON r.owner_git_id = p.git_id
+        LEFT JOIN REQUEST_HISTORY h ON r.git_id = h.repository_id
+        WHERE r.GIT_ID = v_repository_id
+        AND (h.REQUEST_TIME IS NULL OR NOT EXISTS (
             SELECT 1 
-            FROM REQUEST_HISTORY b2
-            WHERE b2.REPOSITORY_ID = b.REPOSITORY_ID
-            AND b2.REQUEST_TIME > b.REQUEST_TIME
+            FROM REQUEST_HISTORY h2
+            WHERE h2.REPOSITORY_ID = h.REPOSITORY_ID
+            AND h2.REQUEST_TIME > h.REQUEST_TIME
         ));
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF user_cursor%ISOPEN THEN
+                CLOSE user_cursor;
+            END IF;
+            RAISE_APPLICATION_ERROR(-20021, 'Ошибка при получении репозитория по ID: ' || SQLERRM);
     END;
 
     --Получить языки репозитория
@@ -400,18 +405,58 @@
     --Проверить, есть ли информация по репозиторию в базе данных
     CREATE OR REPLACE PROCEDURE is_repository_info_exist
     (
-        p_repository_id IN VARCHAR,
+        p_owner_git_id IN VARCHAR2,
+        p_repository_name IN VARCHAR2,
         rows_count OUT NUMBER
     )
     AS
-        v_repository_id NUMBER;
+        v_owner_git_id NUMBER;
     BEGIN
-        v_repository_id := TO_NUMBER(p_repository_id);
-        SELECT count(*) INTO rows_count FROM REPOSITORIES WHERE REPOSITORIES.GIT_ID = v_repository_id;
+        v_owner_git_id := TO_NUMBER(p_owner_git_id);
+        SELECT COUNT(*) 
+        INTO rows_count 
+        FROM REPOSITORIES 
+        WHERE owner_git_id = v_owner_git_id 
+        AND UPPER(name) = UPPER(p_repository_name);
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20019, 'Ошибка при проверке репозитория: ' || SQLERRM);
     END;
 
     SELECT sha, author_login, author_avatar_url, commit_date, url FROM COMMITS WHERE COMMITS.repository_id = 1061065861;
 
+    CREATE OR REPLACE PROCEDURE get_repository_by_owner_and_name
+    (
+        p_owner_login IN VARCHAR2,
+        p_repo_name IN VARCHAR2,
+        user_cursor OUT SYS_REFCURSOR
+    )
+    AS
+    BEGIN
+        OPEN user_cursor FOR
+        SELECT 
+            r.*,
+            p.login AS owner_login,
+            p.avatar_url AS owner_avatar_url,
+            h.REQUEST_TIME
+        FROM REPOSITORIES r
+        INNER JOIN PROFILES p ON r.owner_git_id = p.git_id
+        LEFT JOIN REQUEST_HISTORY h ON r.git_id = h.repository_id
+        WHERE UPPER(p.login) = UPPER(p_owner_login)
+        AND UPPER(r.name) = UPPER(p_repo_name)
+        AND (h.REQUEST_TIME IS NULL OR NOT EXISTS (
+            SELECT 1 
+            FROM REQUEST_HISTORY h2
+            WHERE h2.REPOSITORY_ID = h.REPOSITORY_ID
+            AND h2.REQUEST_TIME > h.REQUEST_TIME
+        ));
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF user_cursor%ISOPEN THEN
+                CLOSE user_cursor;
+            END IF;
+            RAISE_APPLICATION_ERROR(-20020, 'Ошибка при получении репозитория: ' || SQLERRM);
+    END;
 
     VAR c REFCURSOR
     EXEC get_repository_languages(1061065861, :c)

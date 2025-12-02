@@ -17,3 +17,5 @@
     END;
 
     DROP PROCEDURE add_request_to_general_history;
+
+    SELECT * FROM REQUEST_HISTORY ORDER BY REQUEST_TIME;
