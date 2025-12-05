@@ -4,7 +4,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Cookie, Response
 from pydantic import BaseModel
 from tools.db_helper import DBHelper
-from tools.password_hasher import Hasher
+from tools.encrypt_helper import EncryptHelper
 from tools.auth_helper import AuthHelper, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, User
 from models.user import User as DBUser
 
@@ -21,7 +21,7 @@ class LoginUser(BaseModel):
     input: str
     password: str
 
-@router.get("/users/me/", response_model=User)
+@router.get("/users/me", response_model=User)
 async def read_users_me(current_user: User = Depends(AuthHelper.get_current_user)) -> User:
     return current_user
 
@@ -58,7 +58,7 @@ async def login_for_access_token(response: Response, form_data: LoginUser) -> To
 
 @router.get("/get/hash")
 async def get_hash() -> str:
-    return Hasher.get_password_hash("secret")
+    return EncryptHelper.get_password_hash("secret")
 
 
 @router.get("/test")

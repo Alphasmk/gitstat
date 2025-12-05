@@ -21,13 +21,13 @@
     --Получить пользователя по email или логину
     CREATE OR REPLACE PROCEDURE get_user_by_email_or_login
     (
-        user_input IN VARCHAR,
+        user_input IN VARCHAR2,
         user_cursor OUT SYS_REFCURSOR
     )
     AS
     BEGIN
         OPEN user_cursor FOR
-        SELECT * FROM USERS WHERE LOWER(USERS.EMAIL) = LOWER(user_input) OR LOWER(USERS.USERNAME) = LOWER(user_input);
+        SELECT * FROM USERS WHERE email = user_input OR username = user_input;
     EXCEPTION
         WHEN OTHERS THEN
             IF user_cursor%ISOPEN THEN
@@ -81,4 +81,40 @@
     EXCEPTION
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20002, 'Ошибка при подсчете пользователей: ' || SQLERRM);
+    END;
+
+    --Получить историю запросов пользователя по id
+    CREATE OR REPLACE PROCEDURE get_user_history
+    (
+        p_user_id IN VARCHAR2,
+        user_cursor OUT SYS_REFCURSOR
+    )
+    AS
+        v_user_id NUMBER;
+    BEGIN
+        v_user_id := TO_NUMBER(p_user_id);
+        OPEN user_cursor FOR
+        SELECT 
+            a.id,
+            a.repository_id AS obj_id,
+            b.name AS obj_name,
+            a.request_time,
+            a.request_type
+        FROM REQUEST_HISTORY a
+        INNER JOIN REPOSITORIES b ON b.GIT_ID = a.REPOSITORY_ID
+        WHERE a.USER_ID = v_user_id AND a.REQUEST_TYPE = 'REPOSITORY'
+        
+        UNION ALL
+        
+        SELECT 
+            a.id,
+            a.profile_id AS obj_id,
+            b.login AS obj_name,
+            a.request_time,
+            a.request_type
+        FROM REQUEST_HISTORY a
+        INNER JOIN PROFILES b ON b.GIT_ID = a.PROFILE_ID
+        WHERE a.USER_ID = v_user_id AND a.REQUEST_TYPE = 'PROFILE'
+        
+        ORDER BY request_time DESC;
     END;

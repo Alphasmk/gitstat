@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, Request
 from routers.login_route import router as LoginRouter 
 from routers.register_route import router as RegisterRouter 
 from routers.git_request_route import router as GitRequestRouter
+from routers.history_route import router as HistoryRouter
 from fastapi.middleware.cors import CORSMiddleware
 from context import request_token
 import uvicorn
@@ -27,6 +28,7 @@ async def set_token_context(request: Request, call_next):
 app.include_router(LoginRouter)
 app.include_router(RegisterRouter)
 app.include_router(GitRequestRouter)
+app.include_router(HistoryRouter)
 
 if __name__ == "__main__":
     uvicorn.run(

@@ -46,7 +46,6 @@ class DBHelper:
         
         access_token = request_token.get()
         print(access_token)
-        # conn = await oracledb.connect_async(user="system", password="1111", dsn="localhost:1522/freepdb1")
         if access_token:
             try:
                 import jwt
@@ -121,7 +120,7 @@ class DBHelper:
             raise
 
     @staticmethod
-    async def is_was_request(proc_name: str, value: int):
+    async def is_was_request(proc_name: str, value: int | str):
         try:
             async with DBHelper.get_cursor() as cursor:
                 out_param = cursor.var(oracledb.NUMBER)
@@ -136,7 +135,6 @@ class DBHelper:
         try:
             async with DBHelper.get_cursor() as cursor:
                 ref_cursor = cursor.var(oracledb.CURSOR)
-                # Передаем ВСЕ ТРИ параметра: два входных + OUT-курсор
                 await cursor.callproc("SYSTEM." + "get_repository_by_owner_and_name", [owner_login, repo_name, ref_cursor])
                 result_cursor = ref_cursor.getvalue()
                 row = await result_cursor.fetchone()
@@ -149,16 +147,20 @@ class DBHelper:
             raise
 
     @staticmethod
-    async def is_repository_exists(owner_git_id: int, repo_name: str):
+    async def is_repository_exists(owner_login: str, owner_name: str):
         try:
             async with DBHelper.get_cursor() as cursor:
                 out_param = cursor.var(oracledb.NUMBER)
-                await cursor.callproc("SYSTEM." + "is_repository_info_exist", [owner_git_id, repo_name, out_param])
+                await cursor.callproc("SYSTEM." + "is_repository_info_exist", [owner_login, owner_name, out_param])
                 result = out_param.getvalue()
                 return result
         except Exception as e:
             raise
     
+    @staticmethod
+    async def get_user_history(user_id: int):
+        return await DBHelper.execute_get_all("get_user_history", str(user_id))
+
     @staticmethod
     def convert_date(date: str) -> datetime:
         return datetime.fromisoformat(date.replace('Z', '+00:00'))
@@ -409,7 +411,7 @@ class DBHelper:
                 await DBHelper.add_profile_to_history(owner_profile)
 
         repo_exists = await DBHelper.is_repository_exists(
-            owner_profile.get('id'), 
+            owner_profile.get('login'), 
             full_repo.get('name')
         )
 

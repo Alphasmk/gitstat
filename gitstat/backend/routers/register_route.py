@@ -4,28 +4,35 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
+
 from tools.db_helper import DBHelper
-from tools.password_hasher import Hasher
+from tools.encrypt_helper import EncryptHelper
 from models.user import User as DBUser
 
+
 router = APIRouter()
+
 
 class RegisterUser(BaseModel):
     username: str
     email: EmailStr
     password: str
 
+
 @router.post("/register", response_class=JSONResponse)
 async def register_user(form_data: RegisterUser):
+    encrypted_username = EncryptHelper.encrypt_data(form_data.username.lower())
+    encrypted_email = EncryptHelper.encrypt_data(form_data.email.lower())
+    
     existing_user = await DBHelper.execute_get(
         "get_user_by_email_or_login", 
-        form_data.username.lower()
+        encrypted_username
     )
     
     if not existing_user:
         existing_user = await DBHelper.execute_get(
             "get_user_by_email_or_login", 
-            form_data.email.lower()
+            encrypted_email
         )
     
     if existing_user:
@@ -37,15 +44,17 @@ async def register_user(form_data: RegisterUser):
     total_users = await DBHelper.get_total_users_count()
     role = "admin" if total_users == 0 else "user"
 
-    hashed_password = Hasher.get_password_hash(form_data.password)
+    hashed_password = EncryptHelper.get_password_hash(form_data.password)
+    
+    encrypted_role = EncryptHelper.encrypt_data(role)
     
     try:
         async with DBHelper.get_cursor() as cursor:
             await cursor.callproc("SYSTEM.add_user", [
-                form_data.username.lower(), 
-                form_data.email.lower(), 
-                hashed_password, 
-                role, 
+                encrypted_username,
+                encrypted_email,
+                hashed_password,
+                encrypted_role,
                 "N"
             ])
     except Exception as e:

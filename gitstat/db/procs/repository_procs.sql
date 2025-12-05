@@ -285,31 +285,22 @@
     END;
 
     --Добавить коммит в историю
-    CREATE OR REPLACE PROCEDURE add_commit (
-    p_repository_id IN NUMBER,
-    p_sha IN VARCHAR2,
-    p_author_login IN VARCHAR2,
-    p_author_avatar_url IN VARCHAR2,
-    p_commit_date IN TIMESTAMP,
-    p_url IN VARCHAR2
+    CREATE OR REPLACE PROCEDURE add_commit
+    (
+        p_repository_id IN NUMBER,
+        p_sha IN VARCHAR2,
+        p_author_login IN VARCHAR2,
+        p_author_avatar_url IN VARCHAR2,
+        p_commit_date IN TIMESTAMP,
+        p_url IN VARCHAR2
     )
     AS
     BEGIN
-        MERGE INTO COMMITS c
-        USING (
-            SELECT 
-                p_repository_id AS repository_id,
-                p_sha AS sha,
-                p_author_login AS author_login,
-                p_author_avatar_url AS author_avatar_url,
-                p_commit_date AS commit_date,
-                p_url AS url
-            FROM DUAL
-        ) src
-        ON (c.sha = src.sha)
-        WHEN NOT MATCHED THEN
-            INSERT (repository_id, sha, author_login, author_avatar_url, commit_date, url)
-            VALUES (src.repository_id, src.sha, src.author_login, src.author_avatar_url, src.commit_date, src.url);
+        INSERT INTO COMMITS (repository_id, sha, author_login, author_avatar_url, commit_date, url)
+        VALUES (p_repository_id, p_sha, p_author_login, p_author_avatar_url, p_commit_date, p_url);
+    EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            NULL;
     END;
 
     --Получить репозиторий по id
@@ -405,19 +396,18 @@
     --Проверить, есть ли информация по репозиторию в базе данных
     CREATE OR REPLACE PROCEDURE is_repository_info_exist
     (
-        p_owner_git_id IN VARCHAR2,
+        p_owner_login IN VARCHAR2,
         p_repository_name IN VARCHAR2,
         rows_count OUT NUMBER
     )
     AS
-        v_owner_git_id NUMBER;
     BEGIN
-        v_owner_git_id := TO_NUMBER(p_owner_git_id);
         SELECT COUNT(*) 
         INTO rows_count 
-        FROM REPOSITORIES 
-        WHERE owner_git_id = v_owner_git_id 
-        AND UPPER(name) = UPPER(p_repository_name);
+        FROM REPOSITORIES r
+        INNER JOIN PROFILES p ON r.owner_git_id = p.git_id
+        WHERE UPPER(p.login) = UPPER(p_owner_login) 
+        AND UPPER(r.name) = UPPER(p_repository_name);
     EXCEPTION
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20019, 'Ошибка при проверке репозитория: ' || SQLERRM);

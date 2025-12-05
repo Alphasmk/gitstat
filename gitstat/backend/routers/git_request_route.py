@@ -57,28 +57,31 @@ async def get_github_response(result):
         response = await HTTPHelper.async_http_get(f"https://api.github.com/repos/{result.username}/{result.repository}")
     return response
 
-async def get_count_of_rows(proc: str, id: int):
-    return await DBHelper.is_was_request(proc, id)
+async def get_count_of_rows(proc: str, value: int | str):
+    return await DBHelper.is_was_request(proc, value)
 
 @router.post('/check_git_info', response_class=RedirectResponse)
 async def check_git_info(stroke: str, current_user = Depends(AuthHelper.get_current_user)):
     try:
         user_input = parse_user_input(stroke)
         result = RequestType.model_validate(user_input)
-        response = await get_github_response(result)
-        if response.get('status'):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Не найдено")
         if result.type == "profile":
-            count = await get_count_of_rows("is_was_profile_request", response['id'])
+            if user_input.username:
+                count = await get_count_of_rows("is_was_profile_request_by_login", user_input.username)
+            else:
+                count = 0
             if count > 0:
                 return RedirectResponse(url=f'/git_info?findby={result.username}', status_code=303)
             else:
                 return RedirectResponse(url=f'/new_git_info?stroke={stroke}', status_code=303)
         else:
-            count = await DBHelper.is_repository_exists(
-                response.get('owner').get('id'),
-                response.get('name')
-            )
+            if user_input.username and user_input.repository:
+                count = await DBHelper.is_repository_exists(
+                    user_input.username,
+                    user_input.repository
+                )
+            else:
+                count = 0
             if count > 0:
                 return RedirectResponse(
                     url=f'/git_info?owner={result.username}&repo={result.repository}', 
@@ -99,12 +102,6 @@ async def get_git_info(findby: str | None = None, owner: str | None = None, repo
         if owner and repo:
             git_info = await DBHelper.get_repository_by_owner_and_name(owner, repo)
             if git_info:
-                git_info['response_type'] = 'Repository'
-                repo_id = git_info.get('git_id')
-                git_info['languages'] = await DBHelper.execute_get_all("get_repository_languages", str(repo_id))
-                git_info['topics'] = await DBHelper.execute_get_all("get_repository_topics", str(repo_id))
-                git_info['license'] = await DBHelper.execute_get_all("get_repository_license", str(repo_id))
-                git_info['commits'] = await DBHelper.execute_get_all("get_repository_commits", str(repo_id))
                 async with DBHelper.get_cursor() as cursor:
                     await cursor.callproc("SYSTEM." + "add_request_to_general_history", [
                         current_user.id,
@@ -112,6 +109,13 @@ async def get_git_info(findby: str | None = None, owner: str | None = None, repo
                         None,
                         'REPOSITORY'
                     ])
+                git_info['response_type'] = 'Repository'
+                repo_id = git_info.get('git_id')
+                git_info['languages'] = await DBHelper.execute_get_all("get_repository_languages", str(repo_id))
+                git_info['topics'] = await DBHelper.execute_get_all("get_repository_topics", str(repo_id))
+                git_info['license'] = await DBHelper.execute_get_all("get_repository_license", str(repo_id))
+                git_info['commits'] = await DBHelper.execute_get_all("get_repository_commits", str(repo_id))
+                
         elif findby and isint(findby):
             git_info = await DBHelper.get_repository_by_id(int(findby))
             if git_info:
@@ -174,7 +178,6 @@ async def renew_git_info(stroke: str, current_user = Depends(AuthHelper.get_curr
             
             return RedirectResponse(url=f'/git_info?findby={result.username}', status_code=303)
         else:
-            # Обработка запроса по отдельному репозиторию
             await DBHelper.process_repository(response, current_user)
             return RedirectResponse(url=f'/git_info?findby={response.get('id')}', status_code=303)
     except HTTPException as e:

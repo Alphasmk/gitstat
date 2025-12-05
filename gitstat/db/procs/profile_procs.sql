@@ -116,6 +116,19 @@
 
     DROP PROCEDURE is_was_profile_request;
 
+    CREATE OR REPLACE PROCEDURE is_was_profile_request_by_login
+    (
+        user_name IN VARCHAR2,
+        count_of_rows OUT NUMBER
+    )
+    AS
+    BEGIN
+        SELECT COUNT(*) INTO count_of_rows FROM PROFILES WHERE UPPER(PROFILES.LOGIN) = UPPER(user_name);
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20015, 'Ошибка при проверке профиля: ' || SQLERRM);
+    END;
+
     -- Обновить данные профиля в истории
     CREATE OR REPLACE PROCEDURE update_profile_history
     (
@@ -202,3 +215,5 @@
     
 
     SELECT * FROM REPOSITORY_LANGUAGES WHERE REPOSITORY_LANGUAGES.REPOSITORY_ID = 781942668;
+
+    SELECT * FROM COMMITS WHERE SHA = '3eb50f64788535e24793779f8a602a818c195f71';

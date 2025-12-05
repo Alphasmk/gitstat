@@ -15,6 +15,7 @@ GRANT EXECUTE ON SYSTEM.get_profile_repositories TO user_schema;
 GRANT EXECUTE ON SYSTEM.add_profile_to_history TO user_schema;
 GRANT EXECUTE ON SYSTEM.update_profile_history TO user_schema;
 GRANT EXECUTE ON SYSTEM.is_was_profile_request TO user_schema;
+GRANT EXECUTE ON SYSTEM.is_was_profile_request_by_login TO user_schema;
 GRANT EXECUTE ON SYSTEM.get_repository_by_id TO user_schema;
 GRANT EXECUTE ON SYSTEM.get_repository_by_owner_and_name TO user_schema;
 GRANT EXECUTE ON SYSTEM.add_repository_to_history TO user_schema;
@@ -32,6 +33,7 @@ GRANT EXECUTE ON SYSTEM.get_repository_topics TO user_schema;
 GRANT EXECUTE ON SYSTEM.get_repository_license TO user_schema;
 GRANT EXECUTE ON SYSTEM.get_repository_commits TO user_schema;
 GRANT EXECUTE ON SYSTEM.add_request_to_general_history TO user_schema;
+GRANT EXECUTE ON SYSTEM.get_user_history TO user_schema;
 
 -- Схема администратора
 CREATE USER admin_schema IDENTIFIED BY 3333;
@@ -39,6 +41,10 @@ GRANT CREATE SESSION TO admin_schema;
 GRANT EXECUTE ON SYSTEM.admin_get_all_users TO admin_schema;
 GRANT EXECUTE ON SYSTEM.admin_get_request_history TO admin_schema;
 GRANT EXECUTE ON SYSTEM.admin_change_role TO admin_schema;
+GRANT EXECUTE ON SYSTEM.get_profile_by_name TO admin_schema;
+GRANT EXECUTE ON SYSTEM.is_was_profile_request_by_login TO admin_schema;
+GRANT EXECUTE ON SYSTEM.get_profile_repositories TO admin_schema;
+GRANT EXECUTE ON SYSTEM.get_user_history TO admin_schema;
 
 -- Схема модератора
 CREATE USER moderator_schema IDENTIFIED BY 4444;

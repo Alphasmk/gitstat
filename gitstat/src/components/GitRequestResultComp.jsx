@@ -184,7 +184,7 @@ function GitRequestResultComp() {
                                         <LinkButton style={{ height: 60, width: 60, borderRadius: 20, marginRight: 10 }} onClick={() => {
                                             window.open(data?.html_url, '_blank');
                                         }}></LinkButton>
-                                        <Tooltip placement="top" title={<span>{"Последний запрос: "}<br />{formatDateTime(lastUpdate)}</span>}>
+                                        <Tooltip placement="top" title={<span>{"Последний запрос: "}<br />{lastUpdate ? formatDateTime(lastUpdate) : "Только что"}</span>}>
                                             <span><ReloadButton style={{ height: 60, width: 60, borderRadius: 20 }} onClick={() => getData(true)}></ReloadButton></span>
                                         </Tooltip>
                                     </div>
@@ -415,7 +415,7 @@ function GitRequestResultComp() {
                                         <LinkButton style={{ height: 60, width: 60, borderRadius: 20, marginRight: 10 }} onClick={() => {
                                             window.open(data?.html_url, '_blank');
                                         }}></LinkButton>
-                                        <Tooltip placement="top" title={<span>{"Последний запрос: "}<br />{formatDateTime(lastUpdate)}</span>}>
+                                        <Tooltip placement="top" title={<span>{"Последний запрос: "}<br />{lastUpdate ? formatDateTime(lastUpdate) : "Только что"}</span>}>
                                             <span><ReloadButton style={{ height: 60, width: 60, borderRadius: 20 }} onClick={getData}></ReloadButton></span>
                                         </Tooltip>
                                     </div>
