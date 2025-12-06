@@ -118,3 +118,91 @@
         
         ORDER BY request_time DESC;
     END;
+
+    --Получить всех зарегистрированных пользователей
+    CREATE OR REPLACE PROCEDURE get_all_users
+    (
+        user_cursor OUT SYS_REFCURSOR
+    )
+    AS
+    BEGIN 
+        OPEN user_cursor FOR
+        SELECT id, username, email, role, is_blocked, created_at FROM USERS
+        ORDER BY created_at DESC;
+    END;
+
+    --Заблокировать пользователя
+    CREATE OR REPLACE PROCEDURE change_user_block_state
+    (
+        p_user_id VARCHAR2
+    )
+    AS
+        v_user_id NUMBER;
+    BEGIN
+        v_user_id := TO_NUMBER(p_user_id);
+
+        UPDATE USERS
+        SET is_blocked = CASE 
+            WHEN is_blocked = 'Y' THEN 'N'
+            ELSE 'Y'
+        END
+        WHERE id = v_user_id
+        AND role = 'user';
+
+        IF SQL%ROWCOUNT = 0 THEN
+            RAISE_APPLICATION_ERROR(-20002, 'Пользователь не найден или имеет защищенную роль');
+        END IF;
+    END;
+
+    --Удалить пользователя
+    CREATE OR REPLACE PROCEDURE delete_user
+    (
+        p_user_id VARCHAR2
+    )
+    AS
+        v_user_id NUMBER;
+    BEGIN
+        v_user_id := TO_NUMBER(p_user_id);
+
+        DELETE FROM USERS
+        WHERE id = v_user_id
+        AND role = 'user';
+
+        IF SQL%ROWCOUNT = 0 THEN
+            RAISE_APPLICATION_ERROR(-20003, 'Пользователь не найден или имеет защищенную роль');
+        END IF;
+
+        COMMIT;
+    END;
+
+    --Сменить роль пользователя
+    CREATE OR REPLACE PROCEDURE change_user_role
+    (
+        p_user_id VARCHAR2,
+        p_new_role VARCHAR2
+    )
+    AS
+        v_user_id NUMBER;
+    BEGIN
+        v_user_id := TO_NUMBER(p_user_id);
+
+        IF p_new_role NOT IN ('user', 'moderator', 'admin') THEN
+            RAISE_APPLICATION_ERROR(-20004, 'Недопустимое значение роли');
+        END IF;
+
+        UPDATE USERS
+        SET role = p_new_role
+        WHERE id = v_user_id;
+
+        IF SQL%ROWCOUNT = 0 THEN
+            RAISE_APPLICATION_ERROR(-20005, 'Пользователь не найден');
+        END IF;
+
+        COMMIT;
+    EXCEPTION
+        WHEN INVALID_NUMBER THEN
+            RAISE_APPLICATION_ERROR(-20006, 'Некорректный ID пользователя');
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20007, 'Ошибка при изменении роли: ' || SQLERRM);
+    END;

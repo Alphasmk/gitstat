@@ -4,13 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import logoutImage from '../images/logout.png'
 const { Header } = Layout;
 
-const items = [
-        { key: '/', label: 'Главная' },
-        { key: '/history', label: 'История' },
-    ];
+// const items = [
+//         { key: '/', label: 'Главная' },
+//         { key: '/history', label: 'История' },
+//     ];
 
 function HeaderComp() {
     const [username, setUsername] = useState('');
+    const [items, setItems] = useState([
+        { key: '/', label: 'Главная' },
+        { key: '/history', label: 'История' },
+    ])
     const navigate = useNavigate();
     const handleMenuClick = (e) => {
         navigate(e.key);
@@ -23,11 +27,35 @@ function HeaderComp() {
             navigate('/login');
         })
     }
-    useEffect(() => {
+        useEffect(() => {
         fetch('http://localhost:8000/users/me', {
             method: 'GET',
             credentials: 'include'
-        }).then(resp => resp.json()).then(data => setUsername(data.username))
+        }).then(resp => resp.json()).then(
+            data => {
+                setUsername(data.username);
+
+                let items_key = "";
+                let items_label = "";
+
+                if(data.role === "admin") {
+                    items_key = '/admin';
+                    items_label = 'Панель администратора';
+                }
+                else if(data.role === "moderator") {
+                    items_key = '/moderator';
+                    items_label = 'Панель модератора';
+                }
+
+                if(data.role !== "user") {
+                    setItems([
+                        { key: '/', label: 'Главная' },
+                        { key: '/history', label: 'История' },
+                        { key: items_key, label: items_label}
+                    ]);
+                }
+            }
+        )
     }, []);
     return (
         <Header style={{ backgroundColor: '#12171F', padding: '0 40px' }}>

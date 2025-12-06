@@ -34,13 +34,13 @@ function LanguagesDiagram({ languages }) {
   return (
     <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: "#262E3B", borderRadius: 20, flexWrap: "wrap", alignContent: "center" , padding: 20}}>
         <span style={{color: "white", fontSize: 26, fontWeight: 600}}>Языки репозитория:</span>
-      <PieChart width={700} height={600}>
+      <PieChart width={600} height={600} >
         <Pie
           activeIndex={activeIndex}
           activeShape={renderActiveShape}
           data={chartData}
-          cx={350}
-          cy={250} 
+          cx="50%"
+          cy="50%" 
           outerRadius={200}
           innerRadius={80}
           dataKey="value"
@@ -58,7 +58,7 @@ function LanguagesDiagram({ languages }) {
           verticalAlign="bottom"
           height={60} 
           wrapperStyle={{ paddingTop: '-20px' }} 
-          formatter={(v) => <span style={{ color: 'white' }}>{v}</span>} 
+          formatter={(v) => <span style={{ color: 'white' }}>{v}</span>}
         />
       </PieChart>
     </div>

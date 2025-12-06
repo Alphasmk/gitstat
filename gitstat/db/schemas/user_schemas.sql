@@ -38,13 +38,14 @@ GRANT EXECUTE ON SYSTEM.get_user_history TO user_schema;
 -- Схема администратора
 CREATE USER admin_schema IDENTIFIED BY 3333;
 GRANT CREATE SESSION TO admin_schema;
-GRANT EXECUTE ON SYSTEM.admin_get_all_users TO admin_schema;
-GRANT EXECUTE ON SYSTEM.admin_get_request_history TO admin_schema;
-GRANT EXECUTE ON SYSTEM.admin_change_role TO admin_schema;
 GRANT EXECUTE ON SYSTEM.get_profile_by_name TO admin_schema;
 GRANT EXECUTE ON SYSTEM.is_was_profile_request_by_login TO admin_schema;
 GRANT EXECUTE ON SYSTEM.get_profile_repositories TO admin_schema;
 GRANT EXECUTE ON SYSTEM.get_user_history TO admin_schema;
+GRANT EXECUTE ON SYSTEM.get_all_users TO admin_schema;
+GRANT EXECUTE ON SYSTEM.change_user_block_state TO admin_schema;
+GRANT EXECUTE ON SYSTEM.change_user_role TO admin_schema;
+GRANT EXECUTE ON SYSTEM.delete_user TO admin_schema;
 
 -- Схема модератора
 CREATE USER moderator_schema IDENTIFIED BY 4444;

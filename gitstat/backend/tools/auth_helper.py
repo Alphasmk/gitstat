@@ -79,12 +79,14 @@ class AuthHelper:
         print(encrypted_input)
         user_db = await DBHelper.execute_get("get_user_by_email_or_login", encrypted_input)
         if user_db:
+            if user_db["is_blocked"] == "Y":
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Пользователь заблокирован")
             decrypted_user = {
                 "id": user_db["id"],
                 "username": EncryptHelper.decrypt_data(user_db["username"]),
                 "email": EncryptHelper.decrypt_data(user_db["email"]),
                 "password_hash": user_db["password_hash"],
-                "role": EncryptHelper.decrypt_data(user_db["role"]),
+                "role": user_db["role"],
                 "is_blocked": user_db["is_blocked"],
                 "created_at": user_db["created_at"]
             }
@@ -110,7 +112,7 @@ class AuthHelper:
                 "username": EncryptHelper.decrypt_data(user_db["username"]),
                 "email": EncryptHelper.decrypt_data(user_db["email"]),
                 "password_hash": user_db["password_hash"],
-                "role": EncryptHelper.decrypt_data(user_db["role"]),
+                "role": user_db["role"],
                 "is_blocked": user_db["is_blocked"],
                 "created_at": user_db["created_at"]
             }

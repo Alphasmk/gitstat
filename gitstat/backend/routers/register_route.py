@@ -46,15 +46,13 @@ async def register_user(form_data: RegisterUser):
 
     hashed_password = EncryptHelper.get_password_hash(form_data.password)
     
-    encrypted_role = EncryptHelper.encrypt_data(role)
-    
     try:
         async with DBHelper.get_cursor() as cursor:
             await cursor.callproc("SYSTEM.add_user", [
                 encrypted_username,
                 encrypted_email,
                 hashed_password,
-                encrypted_role,
+                role,
                 "N"
             ])
     except Exception as e:

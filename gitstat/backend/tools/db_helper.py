@@ -88,6 +88,21 @@ class DBHelper:
                 return int(count_var.getvalue() or 0)
         except Exception as e:
             raise
+    
+    @staticmethod
+    async def get_all_users():
+        try:
+            async with DBHelper.get_cursor() as cursor:
+                ref_cursor = cursor.var(oracledb.CURSOR)
+                await cursor.callproc("SYSTEM." + "get_all_users", [ref_cursor])
+                result_cursor = ref_cursor.getvalue()
+                rows = await result_cursor.fetchall()
+                columns = [col[0].lower() for col in result_cursor.description]
+                result = [dict(zip(columns, row)) for row in rows]
+                return result
+        except Exception as e:
+            raise
+
 
     @staticmethod
     async def execute_get(proc_name: str, value: str | int):

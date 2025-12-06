@@ -76,8 +76,9 @@ function LoginComp() {
       setTimeout(() => {
         navigate('/');
       }, 1500);
-    } catch {
-      openNotification('Ошибка', `Неверный логин или пароль`);
+    } catch (error){
+      const errorMessage = error.response?.data?.detail || 'Неверный логин или пароль';
+      openNotification('Ошибка', errorMessage);
     }
   };
 
@@ -93,8 +94,9 @@ function LoginComp() {
         withCredentials: true
       });
       openNotification('Успешная регистрация', `Вы зарегистрировались как ${values.username}`);
-    } catch {
-      openNotification('Ошибка', `Неверный логин или пароль`);
+    } catch (error){
+      const errorMessage = error.response?.data?.detail || 'Неверный логин или пароль';
+      openNotification('Ошибка', errorMessage);
     }
   };
 

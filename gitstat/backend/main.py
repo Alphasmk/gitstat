@@ -3,6 +3,7 @@ from routers.login_route import router as LoginRouter
 from routers.register_route import router as RegisterRouter 
 from routers.git_request_route import router as GitRequestRouter
 from routers.history_route import router as HistoryRouter
+from routers.admin_panel_route import router as AdminPanelRouter
 from fastapi.middleware.cors import CORSMiddleware
 from context import request_token
 import uvicorn
@@ -29,6 +30,7 @@ app.include_router(LoginRouter)
 app.include_router(RegisterRouter)
 app.include_router(GitRequestRouter)
 app.include_router(HistoryRouter)
+app.include_router(AdminPanelRouter)
 
 if __name__ == "__main__":
     uvicorn.run(

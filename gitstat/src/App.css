@@ -60,7 +60,6 @@
   margin: 0;
 }
 
-/* Убедитесь, что контейнеры не растягиваются */
 .container {
   max-width: 1200px;
   margin: 0 auto;

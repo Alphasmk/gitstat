@@ -6,6 +6,7 @@ import LoginComp from './components/loginComp'
 import MainPage from './components/MainPage';
 import MainLayout from './layouts/MainLayout';
 import HistoryComp from './components/HistoryComp';
+import AdminPanelComp from './components/AdminPanelComp';
 import GitRequestResultComp from './components/GitRequestResultComp'
 import axios from 'axios';
 import './App.css'
@@ -60,8 +61,10 @@ function App() {
           <Route path="/" element={<ProtectedMainPage/>}/>
           <Route path="/history" element={<HistoryComp/>}/>
           <Route path="/git_result" element={<GitRequestResultComp/>}/>
+          <Route path="/admin" element={<AdminPanelComp/>}/>
         </Route>
         <Route path="/login" element={<ProtectedLoginPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

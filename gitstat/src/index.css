@@ -73,7 +73,7 @@ button:focus-visible {
 .main-menu .ant-menu-item {
   height: 45px !important;
   line-height: 45px !important;
-  width: 100px;
+  min-width: 100px;
   color: white !important;
   font-weight: 600;
   font-size: 16px;
