@@ -100,8 +100,8 @@
             b.name AS obj_name,
             a.request_time,
             a.request_type
-        FROM REQUEST_HISTORY a
-        INNER JOIN REPOSITORIES b ON b.GIT_ID = a.REPOSITORY_ID
+        FROM SYSTEM.REQUEST_HISTORY a
+        INNER JOIN SYSTEM.REPOSITORIES b ON b.GIT_ID = a.REPOSITORY_ID
         WHERE a.USER_ID = v_user_id AND a.REQUEST_TYPE = 'REPOSITORY'
         
         UNION ALL
@@ -112,10 +112,28 @@
             b.login AS obj_name,
             a.request_time,
             a.request_type
-        FROM REQUEST_HISTORY a
-        INNER JOIN PROFILES b ON b.GIT_ID = a.PROFILE_ID
+        FROM SYSTEM.REQUEST_HISTORY a
+        INNER JOIN SYSTEM.PROFILES b ON b.GIT_ID = a.PROFILE_ID
         WHERE a.USER_ID = v_user_id AND a.REQUEST_TYPE = 'PROFILE'
         
+        ORDER BY request_time DESC;
+    END;
+
+    CREATE OR REPLACE PROCEDURE get_user_history_secure
+    (
+        p_user_id IN VARCHAR2,
+        user_cursor OUT SYS_REFCURSOR
+    )
+    AUTHID CURRENT_USER
+    AS
+        v_user_id NUMBER;
+    BEGIN
+        v_user_id := TO_NUMBER(p_user_id);
+
+        OPEN user_cursor FOR
+        SELECT id, obj_id, obj_name, request_time, request_type
+        FROM SYSTEM.v_user_history
+        WHERE user_id = v_user_id
         ORDER BY request_time DESC;
     END;
 
@@ -205,4 +223,44 @@
         WHEN OTHERS THEN
             ROLLBACK;
             RAISE_APPLICATION_ERROR(-20007, 'Ошибка при изменении роли: ' || SQLERRM);
+    END;
+
+    --Сменить пароль пользователю
+    CREATE OR REPLACE PROCEDURE change_user_password 
+    (
+        p_user_id VARCHAR2,
+        p_new_pass VARCHAR2
+    )
+    AS
+        v_user_id NUMBER;
+    BEGIN
+        v_user_id := TO_NUMBER(p_user_id);
+
+        IF TRIM(p_new_pass) IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20004, 'Недопустимое значение пароля');
+        END IF;
+
+        UPDATE USERS
+        SET password_hash = p_new_pass
+        WHERE id = v_user_id;
+
+        IF SQL%ROWCOUNT = 0 THEN
+            RAISE_APPLICATION_ERROR(-20005, 'Пользователь не найден');
+        END IF;
+
+    EXCEPTION
+        WHEN INVALID_NUMBER THEN
+            RAISE_APPLICATION_ERROR(-20006, 'Некорректный ID пользователя');
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20007, 'Ошибка при изменении пароля: ' || SQLERRM);
+    END;
+
+    CREATE OR REPLACE PROCEDURE get_user_history_secure (
+        p_user_id IN VARCHAR2, 
+        user_cursor OUT SYS_REFCURSOR
+    ) AS
+    BEGIN
+        DBMS_APPLICATION_INFO.SET_CLIENT_INFO('MASK_REQUIRED');
+        SYSTEM.get_user_history(p_user_id, user_cursor);
     END;

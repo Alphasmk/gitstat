@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Select, Switch, Button, Modal, List, message, Spin, ConfigProvider } from 'antd';
+import { Table, Select, Switch, Button, Modal, List, message, Spin, ConfigProvider, Input } from 'antd';
 import { DeleteOutlined, HistoryOutlined, ExclamationCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 
 function AdminPanelComp() {
@@ -11,6 +11,10 @@ function AdminPanelComp() {
     const [historyLoading, setHistoryLoading] = useState(false);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
+    const [passModalVisible, setPassModalVisible] = useState(false);
+    const [userForPassChange, setUserForPassChange] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
+    const [passLoading, setPassLoading] = useState(false);
 
     useEffect(() => {
         fetchUsers();
@@ -27,6 +31,12 @@ function AdminPanelComp() {
         } catch (error) {
             message.error('Ошибка получения данных пользователя');
         }
+    };
+
+    const openPassModal = (user) => {
+        setUserForPassChange(user);
+        setNewPassword('');
+        setPassModalVisible(true);
     };
 
     const fetchUsers = async () => {
@@ -79,6 +89,38 @@ function AdminPanelComp() {
             }
         } catch (error) {
             message.error('Ошибка изменения статуса блокировки');
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (!newPassword) {
+            message.error('Введите новый пароль');
+            return;
+        }
+        setPassLoading(true);
+        try {
+            const response = await fetch(
+                `http://localhost:8000/users/${userForPassChange.id}/change_pass`,
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ new_password: newPassword }),
+                },
+            );
+
+            if (response.ok) {
+                message.success('Пароль успешно изменён');
+                setPassModalVisible(false);
+                setUserForPassChange(null);
+                setNewPassword('');
+            } else {
+                message.error('Ошибка смены пароля');
+            }
+        } catch (e) {
+            message.error('Ошибка смены пароля');
+        } finally {
+            setPassLoading(false);
         }
     };
 
@@ -163,7 +205,7 @@ function AdminPanelComp() {
                     value={role}
                     style={{ width: '100%' }}
                     onChange={(value) => handleRoleChange(record.id, value)}
-                    disabled={record.id === currentUserId}
+                    disabled={record.id === currentUserId || record.is_blocked === 'Y'}
                 >
                     <Select.Option value="user">Пользователь</Select.Option>
                     <Select.Option value="moderator">Модератор</Select.Option>
@@ -213,6 +255,18 @@ function AdminPanelComp() {
                         }}
                     >
                         История
+                    </Button>
+                    <Button
+                        type="default"
+                        onClick={() => openPassModal(record)}
+                        disabled={record.id === currentUserId}
+                        style={{
+                            color: '#ffffff',
+                            backgroundColor: record.id === currentUserId ? '#0D1117' : '#262E3B',
+                            border: record.id === currentUserId ? '1px solid #6B7280' : '1px solid #8EAEE3',
+                        }}
+                    >
+                        Сменить пароль
                     </Button>
                     <Button
                         danger
@@ -324,6 +378,41 @@ function AdminPanelComp() {
                     <ExclamationCircleOutlined style={{ color: '#ff4d4f', fontSize: 22 }} />
                     Вы уверены, что хотите удалить пользователя<strong>{userToDelete?.username}</strong>?
                 </p>
+            </Modal>
+
+            <Modal
+                title={<span style={{ color: 'white' }}>Смена пароля пользователя</span>}
+                open={passModalVisible}
+                onOk={handleChangePassword}
+                confirmLoading={passLoading}
+                onCancel={() => {
+                    setPassModalVisible(false);
+                    setUserForPassChange(null);
+                    setNewPassword('');
+                }}
+                okText="Сменить"
+                cancelText="Отмена"
+                styles={{
+                    content: { backgroundColor: '#1C232F' },
+                    header: { backgroundColor: '#1C232F' },
+                }}
+            >
+                <div style={{ color: 'white', marginBottom: 8 }}>
+                    Пользователь: <strong>{userForPassChange?.username}</strong>
+                </div>
+                <Input
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Новый пароль"
+                    style={{
+                        width: '100%',
+                        padding: 8,
+                        borderRadius: 4,
+                        border: '1px solid #8EAEE3',
+                        backgroundColor: '#0D1117',
+                        color: 'white',
+                    }}
+                />
             </Modal>
 
             <style jsx>{`
@@ -443,6 +532,37 @@ function AdminPanelComp() {
                     background-color: #354150 !important;
                     border-color: #9CB3CE !important;
                     color: #9CB3CE !important;
+                }
+
+                .ant-btn-default:disabled {
+                  background-color: #0D1117 !important;
+                  border-color: #6B7280 !important;
+                  color: #6B7280 !important;
+                  cursor: not-allowed !important;
+                }
+                
+                .ant-modal-footer .ant-btn-primary {
+                background-color: #883737 !important;
+                border-color: #C76C6C !important;
+                color: #ffffff !important;
+                }
+
+                .ant-modal-footer .ant-btn-primary:hover:not(:disabled) {
+                  background-color: #A54545 !important;
+                  border-color: #D88888 !important;
+                  color: #ffffff !important;
+                }
+
+                .ant-modal-footer .ant-btn-default {
+                  background-color: #262E3B !important;
+                  border-color: #8EAEE3 !important;
+                  color: #8EAEE3 !important;
+                }
+
+                .ant-modal-footer .ant-btn-default:hover:not(:disabled) {
+                  background-color: #354150 !important;
+                  border-color: #9CB3CE !important;
+                  color: #9CB3CE !important;
                 }
             `}</style>
         </>

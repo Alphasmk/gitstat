@@ -52,7 +52,6 @@ class DBHelper:
                 payload = jwt.decode(access_token, "83b311ce53301c5c526212ae6420383d1375cc48941df43fc7200de7c729d15c", algorithms=["HS256"])
                 print(payload)
                 user_role = payload.get("role")
-                
                 schema = role_to_schema.get(user_role, "user_schema")
             except:
                 schema = "auth_schema"
@@ -102,7 +101,6 @@ class DBHelper:
                 return result
         except Exception as e:
             raise
-
 
     @staticmethod
     async def execute_get(proc_name: str, value: str | int):
@@ -175,6 +173,10 @@ class DBHelper:
     @staticmethod
     async def get_user_history(user_id: int):
         return await DBHelper.execute_get_all("get_user_history", str(user_id))
+    
+    @staticmethod
+    async def get_user_history_secure(user_id: int):
+        return await DBHelper.execute_get_all("get_user_history_secure", str(user_id))
 
     @staticmethod
     def convert_date(date: str) -> datetime:

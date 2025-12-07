@@ -1,8 +1,12 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from tools.db_helper import DBHelper
 from tools.encrypt_helper import EncryptHelper
 
 router = APIRouter()
+
+class ChangePasswordRequest(BaseModel):
+    new_password: str
 
 @router.get('/users')
 async def get_all_users():
@@ -12,6 +16,21 @@ async def get_all_users():
             "id": user["id"],
             "username": EncryptHelper.decrypt_data(user["username"]),
             "email": EncryptHelper.decrypt_data(user["email"]),
+            "role": user["role"],
+            "is_blocked": user["is_blocked"],
+            "created_at": user["created_at"]
+        }
+        for user in users
+    ]
+
+@router.get('/users_secure')
+async def get_all_users_secure():
+    users = await DBHelper.get_all_users()
+    return [
+        {
+            "id": user["id"],
+            "username": EncryptHelper.decrypt_data(user["username"]),
+            "email": user["email"],
             "role": user["role"],
             "is_blocked": user["is_blocked"],
             "created_at": user["created_at"]
@@ -35,7 +54,6 @@ async def change_user_role(user_id: int, role_data: dict):
 
 @router.put('/users/{user_id}/block')
 async def toggle_user_block(user_id: int):
-    print("tuytututut" + str(user_id))
     async with DBHelper.get_cursor() as cursor:
         await cursor.callproc("SYSTEM." + "change_user_block_state", [str(user_id)])
     return {"status": "success"}
@@ -44,4 +62,13 @@ async def toggle_user_block(user_id: int):
 async def delete_user(user_id: int):
     async with DBHelper.get_cursor() as cursor:
         await cursor.callproc("SYSTEM." + "delete_user", [str(user_id)])
+    return {"status": "success"}
+
+@router.put("/users/{user_id}/change_pass")
+async def change_user_password(user_id: int, body: ChangePasswordRequest):
+    async with DBHelper.get_cursor() as cursor:
+        await cursor.callproc(
+            "SYSTEM.change_user_password",
+            [str(user_id), EncryptHelper.get_password_hash(body.new_password)]
+        )
     return {"status": "success"}

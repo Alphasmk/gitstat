@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
-import LoginComp from './components/loginComp'
+import LoginComp from './components/LoginComp'
 import MainPage from './components/MainPage';
 import MainLayout from './layouts/MainLayout';
 import HistoryComp from './components/HistoryComp';
 import AdminPanelComp from './components/AdminPanelComp';
+import ModeratorPanelComp from './components/ModeratorPanelComp';
 import GitRequestResultComp from './components/GitRequestResultComp'
 import axios from 'axios';
 import './App.css'
@@ -62,6 +63,7 @@ function App() {
           <Route path="/history" element={<HistoryComp/>}/>
           <Route path="/git_result" element={<GitRequestResultComp/>}/>
           <Route path="/admin" element={<AdminPanelComp/>}/>
+          <Route path="/moderator" element={<ModeratorPanelComp/>}/>
         </Route>
         <Route path="/login" element={<ProtectedLoginPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
