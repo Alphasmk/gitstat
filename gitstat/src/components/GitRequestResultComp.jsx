@@ -542,10 +542,6 @@ function GitRequestResultComp() {
                                     {data && <LanguagesDiagram languages={data?.languages} />}
                                 </Col>
                             </Row>
-
-                                <div>
-                                    <pre style={{ color: "white" }}>{data && JSON.stringify(data, null, 2)}</pre>
-                                </div>
                         </Space>
                     )}
 

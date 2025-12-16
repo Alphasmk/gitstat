@@ -6,6 +6,10 @@
     )
     AS
     BEGIN
+        IF user_name IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20011, 'Имя пользователя не может быть NULL');
+        END IF;
+    
         OPEN user_cursor FOR
         SELECT a.*, b.REQUEST_TIME
         FROM PROFILES a
@@ -19,11 +23,15 @@
             AND b2.REQUEST_TIME > b.REQUEST_TIME
         ));
     EXCEPTION
-    WHEN OTHERS THEN
-        IF user_cursor%ISOPEN THEN
-            CLOSE user_cursor;
-        END IF;
-        RAISE_APPLICATION_ERROR(-20012, 'Ошибка при получении профиля: ' || SQLERRM);
+        WHEN OTHERS THEN
+            IF user_cursor%ISOPEN THEN
+                CLOSE user_cursor;
+            END IF;
+            IF SQLCODE = -20011 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20012, 'Ошибка при получении профиля: ' || SQLERRM);
+            END IF;
     END;
 
     DROP PROCEDURE get_user_profile_by_name;
@@ -51,8 +59,15 @@
     )
     AS
     BEGIN
-        INSERT
-        INTO PROFILES
+        IF git_id IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20010, 'git_id не может быть NULL');
+        END IF;
+
+        IF login IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20011, 'login не может быть NULL');
+        END IF;
+
+        INSERT INTO PROFILES
         (
             git_id,
             login,
@@ -94,8 +109,14 @@
     EXCEPTION
         WHEN DUP_VAL_ON_INDEX THEN
             RAISE_APPLICATION_ERROR(-20013, 'Профиль с git_id ' || git_id || ' уже существует');
+        WHEN VALUE_ERROR THEN
+            RAISE_APPLICATION_ERROR(-20014, 'Ошибка типа данных при добавлении профиля');
         WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20014, 'Ошибка при добавлении профиля: ' || SQLERRM);
+            IF SQLCODE BETWEEN -20011 AND -20010 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20015, 'Ошибка при добавлении профиля: ' || SQLERRM);
+            END IF;
     END;
 
     DROP PROCEDURE add_profile_to_history;
@@ -108,10 +129,22 @@
     )
     AS
     BEGIN
-        SELECT COUNT(*) INTO count_of_rows FROM PROFILES WHERE PROFILES.git_id = p_git_id;
+        IF p_git_id IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20016, 'git_id не может быть NULL');
+        END IF;
+    
+        SELECT COUNT(*) INTO count_of_rows 
+        FROM PROFILES 
+        WHERE git_id = p_git_id;
     EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            count_of_rows := 0;
         WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20015, 'Ошибка при проверке профиля: ' || SQLERRM);
+            IF SQLCODE = -20016 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20017, 'Ошибка при проверке профиля: ' || SQLERRM);
+            END IF;
     END;
 
     DROP PROCEDURE is_was_profile_request;
@@ -123,10 +156,22 @@
     )
     AS
     BEGIN
-        SELECT COUNT(*) INTO count_of_rows FROM PROFILES WHERE UPPER(PROFILES.LOGIN) = UPPER(user_name);
+        IF user_name IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20018, 'Имя пользователя не может быть NULL');
+        END IF;
+
+        SELECT COUNT(*) INTO count_of_rows 
+        FROM PROFILES 
+        WHERE UPPER(LOGIN) = UPPER(user_name);
     EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            count_of_rows := 0;
         WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20015, 'Ошибка при проверке профиля: ' || SQLERRM);
+            IF SQLCODE = -20018 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20019, 'Ошибка при проверке профиля: ' || SQLERRM);
+            END IF;
     END;
 
     -- Обновить данные профиля в истории
@@ -152,6 +197,10 @@
     AS
         v_rows_updated NUMBER;
     BEGIN
+        IF p_git_id IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20020, 'git_id не может быть NULL');
+        END IF;
+
         UPDATE PROFILES 
         SET login = p_login,
             avatar_url = p_avatar_url,
@@ -173,14 +222,16 @@
         v_rows_updated := SQL%ROWCOUNT;
 
         IF v_rows_updated = 0 THEN
-            RAISE_APPLICATION_ERROR(-20016, 'Профиль с git_id ' || p_git_id || ' не найден для обновления');
+            RAISE_APPLICATION_ERROR(-20021, 'Профиль с git_id ' || p_git_id || ' не найден для обновления');
         END IF;
     EXCEPTION
+        WHEN VALUE_ERROR THEN
+            RAISE_APPLICATION_ERROR(-20022, 'Ошибка типа данных при обновлении профиля');
         WHEN OTHERS THEN
-            IF SQLCODE = -20016 THEN
+            IF SQLCODE BETWEEN -20021 AND -20020 THEN
                 RAISE;
             ELSE
-                RAISE_APPLICATION_ERROR(-20017, 'Ошибка при обновлении профиля: ' || SQLERRM);
+                RAISE_APPLICATION_ERROR(-20023, 'Ошибка при обновлении профиля: ' || SQLERRM);
             END IF;
     END;
 
@@ -192,6 +243,10 @@
     )
     AS
     BEGIN
+        IF p_owner_login IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20024, 'Логин владельца не может быть NULL');
+        END IF;
+    
         OPEN user_cursor FOR
         SELECT 
             r.name, 
@@ -210,10 +265,9 @@
             IF user_cursor%ISOPEN THEN
                 CLOSE user_cursor;
             END IF;
-            RAISE_APPLICATION_ERROR(-20018, 'Ошибка при получении репозиториев профиля: ' || SQLERRM);
+            IF SQLCODE = -20024 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20025, 'Ошибка при получении репозиториев профиля: ' || SQLERRM);
+            END IF;
     END;
-    
-
-    SELECT * FROM REPOSITORY_LANGUAGES WHERE REPOSITORY_LANGUAGES.REPOSITORY_ID = 781942668;
-
-    SELECT * FROM COMMITS WHERE SHA = '3eb50f64788535e24793779f8a602a818c195f71';

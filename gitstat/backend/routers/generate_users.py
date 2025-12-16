@@ -8,13 +8,10 @@ router = APIRouter()
 
 @router.post("/generate-users", response_class=JSONResponse)
 async def generate_test_users():
-    """Генерирует 100000 тестовых пользователей"""
-    
     BATCH_SIZE = 1000
     TOTAL_USERS = 100000
     PASSWORD = "1111"
     
-    # Хешируем пароль один раз
     hashed_password = EncryptHelper.get_password_hash(PASSWORD)
     
     try:
@@ -26,7 +23,6 @@ async def generate_test_users():
                     username = f"user_{i+1}"
                     email = f"user_{i+1}@test.com"
                     
-                    # Шифруем username и email
                     encrypted_username = EncryptHelper.encrypt_data(username.lower())
                     encrypted_email = EncryptHelper.encrypt_data(email.lower())
                     
@@ -38,7 +34,6 @@ async def generate_test_users():
                         "N"
                     ))
                 
-                # Bulk insert через executemany
                 sql = """
                     BEGIN
                         SYSTEM.add_user(:1, :2, :3, :4, :5);

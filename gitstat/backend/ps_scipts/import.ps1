@@ -17,8 +17,14 @@ Write-Host "Importing $InputFile..." -ForegroundColor Cyan
 
 docker cp $InputFile "cp-database:/tmp/users_import.json"
 
-"EXEC json_io.import_users_from_file('users_import.json');
-EXIT;" | docker exec -i cp-database sqlplus -S system/1111@FREEPDB1
+docker exec cp-database bash -c "cat > /tmp/import.sql << 'EOF'
+EXEC json_io.import_users_from_file('users_import.json');
+EXIT;
+EOF" 2>$null
+
+docker exec cp-database bash -c "sqlplus -S system/1111@FREEPDB1 < /tmp/import.sql"
+
+docker exec cp-database rm /tmp/import.sql
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Done!" -ForegroundColor Green

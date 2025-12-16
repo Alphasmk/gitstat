@@ -1,17 +1,17 @@
--- 1. СОЗДАНИЕ СХЕМ
+-- 1 Создание схем
 CREATE USER auth_schema IDENTIFIED BY 1111;
 GRANT CREATE SESSION TO auth_schema;
 
 CREATE USER user_schema IDENTIFIED BY 2222;
 GRANT CREATE SESSION TO user_schema;
 
-CREATE USER moderator_schema IDENTIFIED BY 4444;
-GRANT CREATE SESSION TO moderator_schema;
-
 CREATE USER admin_schema IDENTIFIED BY 3333;
 GRANT CREATE SESSION TO admin_schema;
 
--- 2. РОЛЬ АВТОРИЗАЦИИ (только для регистрации/входа)
+CREATE USER moderator_schema IDENTIFIED BY 4444;
+GRANT CREATE SESSION TO moderator_schema;
+
+-- 2 Роль авторизации
 CREATE ROLE auth_role;
 GRANT EXECUTE ON SYSTEM.add_user TO auth_role;
 GRANT EXECUTE ON SYSTEM.get_user_by_email_or_login TO auth_role;
@@ -20,7 +20,7 @@ GRANT EXECUTE ON SYSTEM.get_total_users_count TO auth_role;
 
 GRANT auth_role TO auth_schema;
 
--- 3. РОЛЬ ПОЛЬЗОВАТЕЛЯ (базовый функционал)
+-- 3. Роль пользователя
 CREATE ROLE user_role;
 GRANT EXECUTE ON SYSTEM.get_user_by_id TO user_role;
 GRANT EXECUTE ON SYSTEM.get_profile_by_name TO user_role;
@@ -50,7 +50,7 @@ GRANT EXECUTE ON SYSTEM.get_user_history TO user_role;
 
 GRANT user_role TO user_schema;
 
--- 4. РОЛЬ МОДЕРАТОРА (управление пользователями + просмотр истории)
+-- 4 Роль модератора
 CREATE ROLE moderator_role;
 GRANT EXECUTE ON SYSTEM.change_user_block_state TO moderator_role;
 GRANT EXECUTE ON SYSTEM.get_all_users TO moderator_role;
@@ -62,7 +62,7 @@ GRANT user_role TO moderator_schema;
 GRANT moderator_role TO moderator_schema;
 
 
--- 5. РОЛЬ АДМИНИСТРАТОРА (полное управление)
+-- 5 Роль администратора
 CREATE ROLE admin_role;
 GRANT EXECUTE ON SYSTEM.change_user_role TO admin_role;
 GRANT EXECUTE ON SYSTEM.delete_user TO admin_role;
@@ -120,39 +120,22 @@ BEGIN
       policy_name   => p.policy_name
     );
   END LOOP;
+
+  FOR p IN (
+    SELECT policy_name
+    FROM   redaction_policies
+    WHERE  object_owner = 'SYSTEM'
+    AND    object_name  = 'V_USER_HISTORY'
+  ) LOOP
+    DBMS_REDACT.DROP_POLICY(
+      object_schema => 'SYSTEM',
+      object_name   => 'V_USER_HISTORY',
+      policy_name   => p.policy_name
+    );
+  END LOOP;
 END;
 
 
 VAR rc REFCURSOR;
 EXEC SYSTEM.get_user_history_secure('3', :rc);
 PRINT rc;
-
-
-BEGIN
-  DBMS_REDACT.ADD_POLICY(
-    object_schema   => 'SYSTEM',
-    object_name     => 'V_USER_HISTORY',
-    column_name     => 'OBJ_ID',
-    policy_name     => 'redact_view_for_moderator',
-    function_type   => DBMS_REDACT.PARTIAL,
-    function_parameters => '0,5,15',
-    expression      => 'SYS_CONTEXT(''USERENV'',''SESSION_USER'') = ''MODERATOR_SCHEMA'''
-  );
-END;
-/
-
-BEGIN
-  DBMS_REDACT.ALTER_POLICY(
-    object_schema   => 'SYSTEM',
-    object_name     => 'V_USER_HISTORY',
-    policy_name     => 'redact_view_for_moderator',
-    action          => DBMS_REDACT.ADD_COLUMN,
-    column_name     => 'OBJ_NAME',
-    function_type   => DBMS_REDACT.REGEXP,
-    regexp_pattern  => '(.{3})(.*)',
-    regexp_replace_string => '\1****',
-    regexp_position => 1,
-    regexp_occurrence => 0
-  );
-END;
-/

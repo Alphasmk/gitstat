@@ -1,21 +1,49 @@
     --Добавление пользователя
-    CREATE OR REPLACE PROCEDURE add_user(
-        username VARCHAR2,
-        email VARCHAR2,
-        password_hash VARCHAR2,
-        role VARCHAR2,
-        is_blocked char
+    CREATE OR REPLACE PROCEDURE add_user
+    (
+    username VARCHAR2,
+    email VARCHAR2,
+    password_hash VARCHAR2,
+    role VARCHAR2,
+    is_blocked char
     )
     AS
     BEGIN
-        INSERT
-        INTO USERS(username, email, password_hash, role, is_blocked)
+        IF username IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20094, 'username не может быть NULL');
+        END IF;
+
+        IF email IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20095, 'email не может быть NULL');
+        END IF;
+
+        IF password_hash IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20096, 'password_hash не может быть NULL');
+        END IF;
+
+        IF role IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20097, 'role не может быть NULL');
+        END IF;
+
+        IF role NOT IN ('user', 'admin', 'moderator') THEN
+            RAISE_APPLICATION_ERROR(-20098, 'Недопустимое значение роли');
+        END IF;
+
+        IF is_blocked NOT IN ('Y', 'N') THEN
+            RAISE_APPLICATION_ERROR(-20099, 'is_blocked должен быть Y или N');
+        END IF;
+
+        INSERT INTO USERS(username, email, password_hash, role, is_blocked)
         VALUES (username, email, password_hash, role, is_blocked);
     EXCEPTION
         WHEN DUP_VAL_ON_INDEX THEN
-            RAISE_APPLICATION_ERROR(-20020, 'Пользователь с таким email или username уже существует');
+            RAISE_APPLICATION_ERROR(-20100, 'Пользователь с таким email или username уже существует');
         WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20022, 'Ошибка при добавлении пользователя: ' || SQLERRM);
+            IF SQLCODE BETWEEN -20099 AND -20094 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20101, 'Ошибка при добавлении пользователя: ' || SQLERRM);
+            END IF;
     END;
 
     --Получить пользователя по email или логину
@@ -26,6 +54,10 @@
     )
     AS
     BEGIN
+        IF user_input IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20102, 'user_input не может быть NULL');
+        END IF;
+
         OPEN user_cursor FOR
         SELECT * FROM USERS WHERE email = user_input OR username = user_input;
     EXCEPTION
@@ -33,7 +65,11 @@
             IF user_cursor%ISOPEN THEN
                 CLOSE user_cursor;
             END IF;
-            RAISE_APPLICATION_ERROR(-20023, 'Ошибка при получении пользователя: ' || SQLERRM);
+            IF SQLCODE = -20102 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20103, 'Ошибка при получении пользователя: ' || SQLERRM);
+            END IF;
     END;
 
     DROP PROCEDURE get_user_by_email_or_login;
@@ -47,25 +83,34 @@
     AS
         v_user_id NUMBER;
     BEGIN
+        IF user_id IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20104, 'user_id не может быть NULL');
+        END IF;
+    
         v_user_id := TO_NUMBER(user_id);
+    
         OPEN user_cursor FOR
-        SELECT * FROM USERS WHERE USERS.ID = user_id;
+        SELECT * FROM USERS WHERE ID = v_user_id;
     EXCEPTION
         WHEN INVALID_NUMBER THEN
             IF user_cursor%ISOPEN THEN
                 CLOSE user_cursor;
             END IF;
-            RAISE_APPLICATION_ERROR(-20024, 'Некорректный ID пользователя: ' || user_id);
+            RAISE_APPLICATION_ERROR(-20105, 'Некорректный ID пользователя: ' || user_id);
         WHEN VALUE_ERROR THEN
             IF user_cursor%ISOPEN THEN
                 CLOSE user_cursor;
             END IF;
-            RAISE_APPLICATION_ERROR(-20025, 'Ошибка преобразования ID: ' || user_id);
+            RAISE_APPLICATION_ERROR(-20106, 'Ошибка преобразования ID: ' || user_id);
         WHEN OTHERS THEN
             IF user_cursor%ISOPEN THEN
                 CLOSE user_cursor;
             END IF;
-            RAISE_APPLICATION_ERROR(-20026, 'Ошибка при получении пользователя: ' || SQLERRM);
+            IF SQLCODE BETWEEN -20106 AND -20104 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20107, 'Ошибка при получении пользователя: ' || SQLERRM);
+            END IF;
     END;
 
     DROP PROCEDURE get_user_by_id;
@@ -79,8 +124,10 @@
     BEGIN
         SELECT COUNT(*) INTO p_count FROM USERS;
     EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            p_count := 0;
         WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20002, 'Ошибка при подсчете пользователей: ' || SQLERRM);
+            RAISE_APPLICATION_ERROR(-20108, 'Ошибка при подсчете пользователей: ' || SQLERRM);
     END;
 
     --Получить историю запросов пользователя по id
@@ -92,7 +139,12 @@
     AS
         v_user_id NUMBER;
     BEGIN
+        IF p_user_id IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20109, 'user_id не может быть NULL');
+        END IF;
+    
         v_user_id := TO_NUMBER(p_user_id);
+    
         OPEN user_cursor FOR
         SELECT 
             a.id,
@@ -100,8 +152,8 @@
             b.name AS obj_name,
             a.request_time,
             a.request_type
-        FROM SYSTEM.REQUEST_HISTORY a
-        INNER JOIN SYSTEM.REPOSITORIES b ON b.GIT_ID = a.REPOSITORY_ID
+        FROM REQUEST_HISTORY a
+        INNER JOIN REPOSITORIES b ON b.GIT_ID = a.REPOSITORY_ID
         WHERE a.USER_ID = v_user_id AND a.REQUEST_TYPE = 'REPOSITORY'
         
         UNION ALL
@@ -112,11 +164,26 @@
             b.login AS obj_name,
             a.request_time,
             a.request_type
-        FROM SYSTEM.REQUEST_HISTORY a
-        INNER JOIN SYSTEM.PROFILES b ON b.GIT_ID = a.PROFILE_ID
+        FROM REQUEST_HISTORY a
+        INNER JOIN PROFILES b ON b.GIT_ID = a.PROFILE_ID
         WHERE a.USER_ID = v_user_id AND a.REQUEST_TYPE = 'PROFILE'
         
         ORDER BY request_time DESC;
+    EXCEPTION
+        WHEN VALUE_ERROR THEN
+            IF user_cursor%ISOPEN THEN
+                CLOSE user_cursor;
+            END IF;
+            RAISE_APPLICATION_ERROR(-20110, 'Ошибка преобразования user_id');
+        WHEN OTHERS THEN
+            IF user_cursor%ISOPEN THEN
+                CLOSE user_cursor;
+            END IF;
+            IF SQLCODE BETWEEN -20110 AND -20109 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20111, 'Ошибка при получении истории пользователя: ' || SQLERRM);
+            END IF;
     END;
 
     CREATE OR REPLACE PROCEDURE get_user_history_secure
@@ -128,6 +195,10 @@
     AS
         v_user_id NUMBER;
     BEGIN
+        IF p_user_id IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20112, 'user_id не может быть NULL');
+        END IF;
+
         v_user_id := TO_NUMBER(p_user_id);
 
         OPEN user_cursor FOR
@@ -135,6 +206,21 @@
         FROM SYSTEM.v_user_history
         WHERE user_id = v_user_id
         ORDER BY request_time DESC;
+    EXCEPTION
+        WHEN VALUE_ERROR THEN
+            IF user_cursor%ISOPEN THEN
+                CLOSE user_cursor;
+            END IF;
+            RAISE_APPLICATION_ERROR(-20113, 'Ошибка преобразования user_id');
+        WHEN OTHERS THEN
+            IF user_cursor%ISOPEN THEN
+                CLOSE user_cursor;
+            END IF;
+            IF SQLCODE BETWEEN -20113 AND -20112 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20114, 'Ошибка при получении защищенной истории: ' || SQLERRM);
+            END IF;
     END;
 
     --Получить всех зарегистрированных пользователей
@@ -145,11 +231,18 @@
     AS
     BEGIN 
         OPEN user_cursor FOR
-        SELECT id, username, email, role, is_blocked, created_at FROM USERS
+        SELECT id, username, email, role, is_blocked, created_at 
+        FROM USERS
         ORDER BY created_at DESC;
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF user_cursor%ISOPEN THEN
+                CLOSE user_cursor;
+            END IF;
+            RAISE_APPLICATION_ERROR(-20115, 'Ошибка при получении списка пользователей: ' || SQLERRM);
     END;
 
-    --Заблокировать пользователя
+    --Заблокировать/разблокировать пользователя
     CREATE OR REPLACE PROCEDURE change_user_block_state
     (
         p_user_id VARCHAR2
@@ -157,6 +250,10 @@
     AS
         v_user_id NUMBER;
     BEGIN
+        IF p_user_id IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20116, 'user_id не может быть NULL');
+        END IF;
+
         v_user_id := TO_NUMBER(p_user_id);
 
         UPDATE USERS
@@ -168,8 +265,21 @@
         AND role = 'user';
 
         IF SQL%ROWCOUNT = 0 THEN
-            RAISE_APPLICATION_ERROR(-20002, 'Пользователь не найден или имеет защищенную роль');
+            RAISE_APPLICATION_ERROR(-20117, 'Пользователь не найден или имеет защищенную роль');
         END IF;
+
+        COMMIT;
+    EXCEPTION
+        WHEN VALUE_ERROR THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20118, 'Ошибка преобразования user_id');
+        WHEN OTHERS THEN
+            ROLLBACK;
+            IF SQLCODE BETWEEN -20118 AND -20116 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20119, 'Ошибка при изменении статуса блокировки: ' || SQLERRM);
+            END IF;
     END;
 
     --Удалить пользователя
@@ -180,6 +290,10 @@
     AS
         v_user_id NUMBER;
     BEGIN
+        IF p_user_id IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20120, 'user_id не может быть NULL');
+        END IF;
+
         v_user_id := TO_NUMBER(p_user_id);
 
         DELETE FROM USERS
@@ -187,10 +301,21 @@
         AND role = 'user';
 
         IF SQL%ROWCOUNT = 0 THEN
-            RAISE_APPLICATION_ERROR(-20003, 'Пользователь не найден или имеет защищенную роль');
+            RAISE_APPLICATION_ERROR(-20121, 'Пользователь не найден или имеет защищенную роль');
         END IF;
 
         COMMIT;
+    EXCEPTION
+        WHEN VALUE_ERROR THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20122, 'Ошибка преобразования user_id');
+        WHEN OTHERS THEN
+            ROLLBACK;
+            IF SQLCODE BETWEEN -20122 AND -20120 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20123, 'Ошибка при удалении пользователя: ' || SQLERRM);
+            END IF;
     END;
 
     --Сменить роль пользователя
@@ -202,10 +327,18 @@
     AS
         v_user_id NUMBER;
     BEGIN
+        IF p_user_id IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20124, 'user_id не может быть NULL');
+        END IF;
+
+        IF p_new_role IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20125, 'new_role не может быть NULL');
+        END IF;
+
         v_user_id := TO_NUMBER(p_user_id);
 
         IF p_new_role NOT IN ('user', 'moderator', 'admin') THEN
-            RAISE_APPLICATION_ERROR(-20004, 'Недопустимое значение роли');
+            RAISE_APPLICATION_ERROR(-20126, 'Недопустимое значение роли');
         END IF;
 
         UPDATE USERS
@@ -213,16 +346,24 @@
         WHERE id = v_user_id;
 
         IF SQL%ROWCOUNT = 0 THEN
-            RAISE_APPLICATION_ERROR(-20005, 'Пользователь не найден');
+            RAISE_APPLICATION_ERROR(-20127, 'Пользователь не найден');
         END IF;
 
         COMMIT;
     EXCEPTION
         WHEN INVALID_NUMBER THEN
-            RAISE_APPLICATION_ERROR(-20006, 'Некорректный ID пользователя');
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20128, 'Некорректный ID пользователя');
+        WHEN VALUE_ERROR THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20129, 'Ошибка преобразования user_id');
         WHEN OTHERS THEN
             ROLLBACK;
-            RAISE_APPLICATION_ERROR(-20007, 'Ошибка при изменении роли: ' || SQLERRM);
+            IF SQLCODE BETWEEN -20129 AND -20124 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20130, 'Ошибка при изменении роли: ' || SQLERRM);
+            END IF;
     END;
 
     --Сменить пароль пользователю
@@ -234,10 +375,18 @@
     AS
         v_user_id NUMBER;
     BEGIN
+        IF p_user_id IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20131, 'user_id не может быть NULL');
+        END IF;
+
+        IF p_new_pass IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20132, 'new_pass не может быть NULL');
+        END IF;
+
         v_user_id := TO_NUMBER(p_user_id);
 
         IF TRIM(p_new_pass) IS NULL THEN
-            RAISE_APPLICATION_ERROR(-20004, 'Недопустимое значение пароля');
+            RAISE_APPLICATION_ERROR(-20133, 'Недопустимое значение пароля');
         END IF;
 
         UPDATE USERS
@@ -245,22 +394,22 @@
         WHERE id = v_user_id;
 
         IF SQL%ROWCOUNT = 0 THEN
-            RAISE_APPLICATION_ERROR(-20005, 'Пользователь не найден');
+            RAISE_APPLICATION_ERROR(-20134, 'Пользователь не найден');
         END IF;
 
+        COMMIT;
     EXCEPTION
         WHEN INVALID_NUMBER THEN
-            RAISE_APPLICATION_ERROR(-20006, 'Некорректный ID пользователя');
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20135, 'Некорректный ID пользователя');
+        WHEN VALUE_ERROR THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20136, 'Ошибка преобразования user_id');
         WHEN OTHERS THEN
             ROLLBACK;
-            RAISE_APPLICATION_ERROR(-20007, 'Ошибка при изменении пароля: ' || SQLERRM);
-    END;
-
-    CREATE OR REPLACE PROCEDURE get_user_history_secure (
-        p_user_id IN VARCHAR2, 
-        user_cursor OUT SYS_REFCURSOR
-    ) AS
-    BEGIN
-        DBMS_APPLICATION_INFO.SET_CLIENT_INFO('MASK_REQUIRED');
-        SYSTEM.get_user_history(p_user_id, user_cursor);
+            IF SQLCODE BETWEEN -20136 AND -20131 THEN
+                RAISE;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20137, 'Ошибка при изменении пароля: ' || SQLERRM);
+            END IF;
     END;

@@ -32,8 +32,8 @@ function LanguagesDiagram({ languages }) {
   const chartData = languages.map(lang => ({ name: lang.language, value: lang.bytes_count || 0 }));
 
   return (
-    <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: "#262E3B", borderRadius: 20, flexWrap: "wrap", alignContent: "center" , padding: 20}}>
-        <span style={{color: "white", fontSize: 26, fontWeight: 600}}>Языки репозитория:</span>
+    <div style={{ height: '100%', display: 'flex', justifyContent: 'center', backgroundColor: "#262E3B", borderRadius: 20, flexWrap: "wrap", alignContent: "center" , padding: 20, flexDirection: "column"}}>
+        <span style={{color: "white", fontSize: 26, fontWeight: 600, display: "block", textAlign: "center"}}>Языки репозитория:</span>
       <PieChart width={600} height={600} >
         <Pie
           activeIndex={activeIndex}

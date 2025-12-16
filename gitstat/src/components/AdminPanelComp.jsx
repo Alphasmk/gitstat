@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Table, Select, Switch, Button, Modal, List, message, Spin, ConfigProvider, Input } from 'antd';
 import { DeleteOutlined, HistoryOutlined, ExclamationCircleOutlined, LoadingOutlined } from '@ant-design/icons';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 function AdminPanelComp() {
     const [users, setUsers] = useState([]);
@@ -15,6 +16,7 @@ function AdminPanelComp() {
     const [userForPassChange, setUserForPassChange] = useState(null);
     const [newPassword, setNewPassword] = useState('');
     const [passLoading, setPassLoading] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchUsers();
@@ -28,6 +30,10 @@ function AdminPanelComp() {
             });
             const data = await response.json();
             setCurrentUserId(data.id);
+            if(data.role != "admin")
+            {
+                navigate("/");
+            }
         } catch (error) {
             message.error('Ошибка получения данных пользователя');
         }

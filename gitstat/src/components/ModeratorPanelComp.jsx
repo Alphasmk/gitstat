@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Modal, List, message, Spin } from 'antd';
+import { Table, Button, Modal, List, message, Spin, Input, Switch } from 'antd';
 import { HistoryOutlined, ExclamationCircleOutlined, LoadingOutlined } from '@ant-design/icons';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 
 function ModeratorPanelComp() {
     const [users, setUsers] = useState([]);
@@ -13,11 +15,14 @@ function ModeratorPanelComp() {
     const [userForPassChange, setUserForPassChange] = useState(null);
     const [newPassword, setNewPassword] = useState('');
     const [passLoading, setPassLoading] = useState(false);
+    const navigate = useNavigate();
+
 
     useEffect(() => {
         fetchUsers();
         fetchCurrentUser();
     }, []);
+
 
     const fetchCurrentUser = async () => {
         try {
@@ -26,10 +31,15 @@ function ModeratorPanelComp() {
             });
             const data = await response.json();
             setCurrentUserId(data.id);
+            if(data.role != "moderator")
+            {
+                navigate("/");
+            }
         } catch (error) {
             message.error('Ошибка получения данных пользователя');
         }
     };
+
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -46,11 +56,31 @@ function ModeratorPanelComp() {
         }
     };
 
+    const handleBlockToggle = async (userId, currentBlockState) => {
+        try {
+            const response = await fetch(`http://localhost:8000/users/${userId}/block`, {
+                method: 'PUT',
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                message.success(currentBlockState === 'Y' ? 'Пользователь разблокирован' : 'Пользователь заблокирован');
+                fetchUsers();
+            } else {
+                message.error('Ошибка изменения статуса блокировки');
+            }
+        } catch (error) {
+            message.error('Ошибка изменения статуса блокировки');
+        }
+    };
+
+
     const openPassModal = (user) => {
         setUserForPassChange(user);
         setNewPassword('');
         setPassModalVisible(true);
     };
+
 
     const handleChangePassword = async () => {
         if (!newPassword) {
@@ -69,6 +99,7 @@ function ModeratorPanelComp() {
                 },
             );
 
+
             if (response.ok) {
                 message.success('Пароль успешно изменён');
                 setPassModalVisible(false);
@@ -84,10 +115,12 @@ function ModeratorPanelComp() {
         }
     };
 
+
     const showUserHistory = async (userId, username) => {
         setHistoryModalVisible(true);
         setHistoryLoading(true);
         setSelectedUserHistory([]);
+
 
         try {
             const response = await fetch(`http://localhost:8000/history_secure?user_id=${userId}`, {
@@ -102,6 +135,7 @@ function ModeratorPanelComp() {
         }
     };
 
+
     function formatDateTime(dateString) {
         const date = new Date(dateString);
         const day = String(date.getDate()).padStart(2, '0');
@@ -111,6 +145,7 @@ function ModeratorPanelComp() {
         const minutes = String(date.getMinutes()).padStart(2, '0');
         return `${day}.${month}.${year} ${hours}:${minutes}`;
     }
+
 
     const columns = [
         {
@@ -135,10 +170,14 @@ function ModeratorPanelComp() {
             key: 'is_blocked',
             width: 120,
             align: 'center',
-            render: (isBlocked) => (
-                <span style={{ color: isBlocked === 'Y' ? '#ff4d4f' : '#22c55e' }}>
-                    {isBlocked === 'Y' ? 'Заблокирован' : 'Активен'}
-                </span>
+            render: (isBlocked, record) => (
+                <Switch
+                    checked={isBlocked === 'Y'}
+                    onChange={() => handleBlockToggle(record.id, isBlocked)}
+                    disabled={record.role === 'admin' || record.role === 'moderator'}
+                    checkedChildren="Да"
+                    unCheckedChildren="Нет"
+                />
             ),
         },
         {
@@ -190,6 +229,7 @@ function ModeratorPanelComp() {
         },
     ];
 
+
     return (
         <>
             <div className="bg-container">
@@ -214,6 +254,7 @@ function ModeratorPanelComp() {
                     />
                 </div>
             </div>
+
 
             <Modal
                 title={<span style={{ color: 'white' }}>История запросов пользователя</span>}
@@ -259,6 +300,7 @@ function ModeratorPanelComp() {
                 )}
             </Modal>
 
+
             <Modal
                 title={<span style={{ color: 'white' }}>Смена пароля пользователя</span>}
                 open={passModalVisible}
@@ -279,8 +321,7 @@ function ModeratorPanelComp() {
                 <div style={{ color: 'white', marginBottom: 8 }}>
                     Пользователь: <strong>{userForPassChange?.username}</strong>
                 </div>
-                <input
-                    type="password"
+                <Input
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Новый пароль"
@@ -294,6 +335,7 @@ function ModeratorPanelComp() {
                     }}
                 />
             </Modal>
+
 
             <style jsx>{`
         .bg-container {
@@ -446,8 +488,10 @@ function ModeratorPanelComp() {
         }
       `}</style>
 
+
         </>
     );
 }
+
 
 export default ModeratorPanelComp;
