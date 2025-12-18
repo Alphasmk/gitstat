@@ -58,3 +58,15 @@ async def generate_test_users():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка генерации пользователей: {str(e)}",
         )
+
+@router.get("/encrypt_stroke")
+def encrypt_stroke(stroke: str):
+    return EncryptHelper.encrypt_data(stroke)
+
+@router.get("/dencrypt_stroke")
+def dencrypt_stroke(stroke: str):
+    return EncryptHelper.decrypt_data(stroke)
+
+@router.get("/encrypt_pass")
+def encrypt_pass(stroke: str):
+    return EncryptHelper.get_password_hash(stroke)

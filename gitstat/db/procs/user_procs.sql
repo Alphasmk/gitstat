@@ -413,3 +413,7 @@
                 RAISE_APPLICATION_ERROR(-20137, 'Ошибка при изменении пароля: ' || SQLERRM);
             END IF;
     END;
+
+    VAR curs REFCURSOR
+    EXEC change_user_password('658886', '$argon2id$v=19$m=65536,t=3,p=4$yxVll7lzqUCakfTFN9IN4w$/WSQwd/35Er1znZ/IKxM2dpfQNm0qTDGUEUjNH4Sizg')
+    PRINT curs;

@@ -293,3 +293,5 @@ CREATE OR REPLACE PACKAGE BODY json_io AS
          RAISE_APPLICATION_ERROR(-20003, 'Ошибка импорта из файла: ' || SQLERRM);
    END import_users_from_file;
 END json_io;
+
+SELECT COUNT(*) FROM USERS;

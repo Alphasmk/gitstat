@@ -33,11 +33,3 @@ app.include_router(GitRequestRouter)
 app.include_router(HistoryRouter)
 app.include_router(AdminPanelRouter)
 app.include_router(GenerateRouter)
-
-if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="localhost",
-        port=8000,
-        reload=True,
-    )
